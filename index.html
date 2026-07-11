@@ -179,13 +179,15 @@
                     if (response.access_token) {
                         state.accessToken = response.access_token;
                         state.connections.gmail = true;
+                        state.realEmails = []; // Reset emails
                         fetchUserInfo();
                     } else {
                         showToast("Erreur d'authentification Google", "error");
                     }
                 }
             });
-            tokenClient.requestAccessToken();
+            // LA CORRECTION MAJEURE ICI : Forcer le consentement pour avoir les droits Gmail
+            tokenClient.requestAccessToken({ prompt: 'consent' });
         } else {
             showToast("Chargement de l'API Google...", "success");
         }
@@ -200,7 +202,7 @@
             state.user = userData;
             document.getElementById('gmail-status').innerText = `Connecté : ${userData.email}`;
             document.getElementById('gmail-status').style.color = 'var(--green)';
-            document.getElementById('google-btn-container').innerHTML = `<button class="btn btn-outline" style="border-color:var(--green); color:var(--green)">Connecté ✓</button>`;
+            document.getElementById('google-btn-container').innerHTML = `<button class="btn btn-outline" style="border-color:var(--green); color:var(--green)" onclick="promptGoogleLogin()">Reconnecter</button>`;
             
             document.getElementById('user-profile').style.display = 'flex';
             document.getElementById('user-pic').src = userData.picture;
@@ -216,13 +218,16 @@
         const listEl = document.getElementById('sav-email-list');
         if(listEl) listEl.innerHTML = `<div style="padding: 40px; text-align: center;"><div class="loader"></div><br><br>Connexion à l'API Gmail... Extraction des 10 derniers emails...</div>`;
         
-        // CHANGEMENT ICI : maxResults=10
         fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=10', {
             headers: { 'Authorization': 'Bearer ' + state.accessToken }
         })
         .then(res => {
             if(!res.ok) {
-                throw new Error("Erreur API Gmail. Le token a peut-être expiré.");
+                // LA CORRECTION MAJEURE ICI : Récupérer le vrai message d'erreur de Google
+                return res.json().then(errData => {
+                    console.error("Gmail API Error Details:", errData);
+                    throw new Error(errData.error.message || "Erreur inconnue");
+                });
             }
             return res.json();
         })
@@ -250,8 +255,8 @@
             });
         })
         .catch(err => {
-            if(listEl) listEl.innerHTML = `<div style="padding: 40px; color: var(--red);">Erreur: ${err.message}</div>`;
-            showToast("Erreur de synchronisation", "error");
+            if(listEl) listEl.innerHTML = `<div style="padding: 20px; color: var(--red); font-size: 13px; text-align: left;"><strong>Erreur d'accès API Gmail :</strong><br>${err.message}<br><br><em>Assurez-vous d'avoir validé l'accès aux emails lors de la connexion. Essayez de vous "Reconnecter" depuis l'onglet Connexions.</em></div>`;
+            showToast("Erreur de synchronisation Gmail", "error");
         });
     }
 
@@ -409,13 +414,9 @@
         
         document.getElementById('dynamic-views').innerHTML = html;
         
-        // AUTO-SYNC : Si Gmail est connecté, on charge les emails automatiquement en entrant dans la vue
         if(state.connections.gmail && document.getElementById('view-sav').classList.contains('active')) {
-            if(state.realEmails.length === 0) {
-                syncGmail();
-            } else {
-                displayRealEmails();
-            }
+            if(state.realEmails.length === 0) syncGmail();
+            else displayRealEmails();
         }
     }
 
@@ -427,7 +428,6 @@
         document.getElementById('page-title').innerText = viewId === 'store' ? 'App Store' : viewId === 'integrations' ? 'Connexions' : agents.find(a=>a.id===viewId).name;
         document.querySelector('.content').scrollTop = 0;
         
-        // Trigger auto-sync if switching to SAV view and Gmail is connected
         if(viewId === 'sav' && state.connections.gmail) {
             if(state.realEmails.length === 0) syncGmail();
             else displayRealEmails();
