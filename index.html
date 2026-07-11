@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WorkAI - Agentic Enterprise OS</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <!-- VRAI MOTEUR OCR TESSERACT.JS POUR LIRE LES CV CANVA -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         :root {
@@ -60,6 +59,7 @@
         .app-icon-large { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
         .app-card h3 { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
         .app-card p { font-size: 12px; color: var(--text-gray); margin-bottom: 12px; line-height: 1.4; height: 60px; overflow: hidden; }
+        .installed-badge { width: 100%; margin-top: 8px; padding: 6px; border-radius: 6px; border: 1px solid var(--green); background: rgba(0,214,143,0.1); color: var(--green); font-weight: 600; font-size: 12px; text-align: center; }
 
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
         .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
@@ -108,10 +108,14 @@
         .alert-box { padding: 16px; background: rgba(255, 77, 77, 0.1); border: 1px solid rgba(255, 77, 77, 0.3); border-radius: 8px; color: var(--red); margin-bottom: 16px; font-size: 14px; }
         .progress-bar { width: 100%; height: 8px; background: var(--surface-2); border-radius: 4px; margin-top: 8px; overflow: hidden; }
         .progress-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
-        
-        /* CSS Bar Chart for Compta */
         .chart-container { display: flex; align-items: flex-end; gap: 20px; height: 200px; padding-top: 20px; border-bottom: 1px solid var(--border); }
         .chart-bar { width: 80px; border-radius: 4px 4px 0 0; transition: height 0.8s cubic-bezier(0.16, 1, 0.3, 1); display: flex; align-items: flex-start; justify-content: center; color: white; font-size: 12px; font-weight: bold; padding-top: 8px; }
+        
+        /* Calendar Specific */
+        .cal-item { display: flex; gap: 16px; padding: 16px; border-bottom: 1px solid var(--surface-2); }
+        .cal-date { text-align: center; width: 50px; flex-shrink: 0; }
+        .cal-day { font-size: 24px; font-weight: 700; color: var(--text); }
+        .cal-month { font-size: 12px; color: var(--text-gray); text-transform: uppercase; }
     </style>
 </head>
 <body>
@@ -143,27 +147,27 @@
             <div class="view active" id="view-store">
                 <div class="hero-bg"></div>
                 <div class="hero">
-                    <span class="hero-badge">✦ Agentic Enterprise OS v15.0</span>
+                    <span class="hero-badge">✦ Agentic Enterprise OS v16.0</span>
                     <h2>Le Futur Centralisé du Travail</h2>
-                    <p>La plateforme SaaS #1. Moteur OCR Tesseract.js pour les CV Canva, envoi d'emails réels via Gmail, et refactoring de code en direct.</p>
+                    <p>La plateforme SaaS #1. Intégration Gmail, Google Calendar, Drive, Sheets. OCR Tesseract.js pour les CV.</p>
                 </div>
                 <div class="app-grid" id="store-grid"></div>
             </div>
 
             <div class="view" id="view-integrations">
-                <h2 style="font-size: 24px; margin-bottom: 8px;">Connexions de l'Entreprise</h2>
-                <p style="color: var(--text-gray); margin-bottom: 24px;">Centralisez vos données réelles. Connectez Gmail, ERP, ou importez vos fichiers.</p>
+                <h2 style="font-size: 24px; margin-bottom: 8px;">Connexions Google Workspace</h2>
+                <p style="color: var(--text-gray); margin-bottom: 24px;">Connectez votre compte Google pour débloquer Gmail, Calendar, Drive et Sheets automatiquement.</p>
                 <div class="grid-2">
                     <div class="card">
-                        <div class="card-title" style="margin-bottom:16px">Communication</div>
+                        <div class="card-title" style="margin-bottom:16px">Compte Google</div>
                         <div class="int-card">
                             <div class="int-logo" style="background: white; color: #ea4335; font-size: 24px;">G</div>
-                            <div style="flex:1"><strong>Gmail</strong><br><span id="gmail-status" style="font-size:12px; color:var(--text-gray)">Non connecté</span></div>
-                            <div id="google-btn-container"><button class="btn btn-outline" onclick="promptGoogleLogin()">Connecter</button></div>
+                            <div style="flex:1"><strong>Google Workspace</strong><br><span id="gmail-status" style="font-size:12px; color:var(--text-gray)">Non connecté</span></div>
+                            <div id="google-btn-container"><button class="btn btn-outline" onclick="promptGoogleLogin()">Tout connecter</button></div>
                         </div>
                     </div>
                     <div class="card">
-                        <div class="card-title" style="margin-bottom:16px">Finance & Logistique</div>
+                        <div class="card-title" style="margin-bottom:16px">Finance & Logistique (Local)</div>
                         <div class="int-card">
                             <div class="int-logo" style="background: #635bff; color: white; font-size: 16px;">B</div>
                             <div style="flex:1"><strong>Relevé Bancaire (CSV)</strong><br><span id="bank-status" style="font-size:12px; color:var(--text-gray)">Importer</span></div>
@@ -188,8 +192,9 @@
 <div class="toast" id="toast"><span id="toast-text"></span></div>
 
 <script>
-    const state = { installedAgents: ['sav', 'compta', 'recruteur', 'copy', 'supply', 'sales', 'legal', 'dev'], connections: { gmail: false }, user: null, accessToken: null, realEmails: [], currentEmail: null };
+    const state = { installedAgents: ['sav', 'compta', 'recruteur', 'copy', 'supply', 'sales', 'legal', 'dev', 'calendar'], connections: { google: false }, user: null, accessToken: null, realEmails: [], currentEmail: null };
     const agents = [
+        { id: 'calendar', name: 'CalendarGenius IA', desc: 'Assistant Direction. Lit Google Calendar, trouve des créneaux libres et suggère des pauses.', iconPath: '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>', color: '#0070f3' },
         { id: 'sav', name: 'ZenDesk IA', desc: 'Helpdesk Dashboard. Lit Gmail, détecte l\'urgence, traduit et envoie les réponses.', iconPath: '<path d="M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-7l-4 4v-4H5a2 2 0 0 1-2-2z"/>', color: '#00d68f' },
         { id: 'compta', name: 'TaxMaster IA', desc: 'Dashboard CFO. Lit votre CSV bancaire, calcule le Burn Rate, la TVA et le Runway.', iconPath: '<path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/>', color: '#0070f3' },
         { id: 'recruteur', name: 'TalentHunter IA', desc: 'ATS & Pipeline. Importez un CV en image (OCR Tesseract), extraction du profil et taux horaire.', iconPath: '<circle cx="12" cy="7" r="4"/><path d="M5.5 21a6.5 6.5 0 0 1 13 0"/>', color: '#cb68ff' },
@@ -202,22 +207,56 @@
 
     // --- LOCAL STORAGE ---
     function saveState() { localStorage.setItem('workai_session', JSON.stringify({ accessToken: state.accessToken, user: state.user, connections: state.connections })); }
-    function loadState() { const s = localStorage.getItem('workai_session'); if(s) { try { const p = JSON.parse(s); state.accessToken = p.accessToken; state.user = p.user; state.connections = p.connections || { gmail: false }; } catch(e) { localStorage.removeItem('workai_session'); } } }
-    function logout() { localStorage.removeItem('workai_session'); state.accessToken = null; state.user = null; state.connections.gmail = false; state.realEmails = []; document.getElementById('gmail-status').innerText = 'Non connecté'; document.getElementById('gmail-status').style.color = 'var(--text-gray)'; document.getElementById('google-btn-container').innerHTML = '<button class="btn btn-outline" onclick="promptGoogleLogin()">Connecter</button>'; document.getElementById('user-profile').style.display = 'none'; document.getElementById('logout-btn').style.display = 'none'; showToast("Déconnexion réussie", "success"); renderDynamicViews(); }
+    function loadState() { const s = localStorage.getItem('workai_session'); if(s) { try { const p = JSON.parse(s); state.accessToken = p.accessToken; state.user = p.user; state.connections = p.connections || { google: false }; } catch(e) { localStorage.removeItem('workai_session'); } } }
+    function logout() { localStorage.removeItem('workai_session'); state.accessToken = null; state.user = null; state.connections.google = false; state.realEmails = []; document.getElementById('gmail-status').innerText = 'Non connecté'; document.getElementById('gmail-status').style.color = 'var(--text-gray)'; document.getElementById('google-btn-container').innerHTML = '<button class="btn btn-outline" onclick="promptGoogleLogin()">Tout connecter</button>'; document.getElementById('user-profile').style.display = 'none'; document.getElementById('logout-btn').style.display = 'none'; showToast("Déconnexion réussie", "success"); renderDynamicViews(); }
 
-    // --- AUTH GOOGLE ---
+    // --- AUTH GOOGLE (Scopes: Gmail, Calendar, Drive, Sheets) ---
     function promptGoogleLogin() {
         if (window.google && google.accounts && google.accounts.oauth2) {
             const tc = google.accounts.oauth2.initTokenClient({
                 client_id: "201469394700-jaqkevq3and8d743gmrjbc2lf04ebobs.apps.googleusercontent.com",
-                scope: "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send profile email",
-                callback: (r) => { if(r.access_token) { state.accessToken = r.access_token; state.connections.gmail = true; state.realEmails = []; fetchUserInfo(); } else { showToast("Erreur d'auth Google", "error"); } }
+                scope: "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file profile email",
+                callback: (r) => { if(r.access_token) { state.accessToken = r.access_token; state.connections.google = true; state.realEmails = []; fetchUserInfo(); } else { showToast("Erreur d'auth Google", "error"); } }
             });
             tc.requestAccessToken({ prompt: 'consent' });
         }
     }
-    function fetchUserInfo() { fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { 'Authorization': 'Bearer ' + state.accessToken } }).then(r => r.json()).then(u => { state.user = u; updateUIAfterLogin(); saveState(); showToast(`Gmail connecté`, 'success'); renderDynamicViews(); }).catch(() => logout()); }
+    function fetchUserInfo() { fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { 'Authorization': 'Bearer ' + state.accessToken } }).then(r => r.json()).then(u => { state.user = u; updateUIAfterLogin(); saveState(); showToast(`Google Workspace connecté`, 'success'); renderDynamicViews(); }).catch(() => logout()); }
     function updateUIAfterLogin() { if(state.user) { document.getElementById('gmail-status').innerText = `Connecté : ${state.user.email}`; document.getElementById('gmail-status').style.color = 'var(--green)'; document.getElementById('google-btn-container').innerHTML = `<button class="btn btn-outline" style="border-color:var(--green); color:var(--green)" onclick="promptGoogleLogin()">Reconnecter</button>`; document.getElementById('user-profile').style.display = 'flex'; document.getElementById('user-pic').src = state.user.picture; document.getElementById('user-name').innerText = state.user.name; document.getElementById('logout-btn').style.display = 'flex'; } }
+
+    // --- CALENDAR GENIUS IA (Google Calendar API) ---
+    function syncCalendar() {
+        const timeMin = new Date().toISOString();
+        document.getElementById('cal-list').innerHTML = `<div style="padding: 40px; text-align: center;"><div class="loader"></div><br><br>Lecture de Google Calendar...</div>`;
+        
+        fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=10&orderBy=startTime&singleEvents=true&timeMin=${timeMin}`, {
+            headers: { 'Authorization': 'Bearer ' + state.accessToken }
+        })
+        .then(res => { if(!res.ok) { if(res.status === 401) { showToast("Session expirée", "error"); logout(); throw new Error("Token expired"); } return res.json().then(e => { throw new Error(e.error.message); }); } return res.json(); })
+        .then(data => {
+            if (!data.items || data.items.length === 0) {
+                document.getElementById('cal-list').innerHTML = `<div style="padding: 40px; color: var(--text-gray);">Aucun événement à venir.</div>`;
+                document.getElementById('cal-analysis').innerHTML = `<div class="task-item" style="border-left-color:var(--green)">✓ Votre agenda est complètement vide. Profitez-en pour avancer sur vos projets internes !</div>`;
+                return;
+            }
+            
+            let html = data.items.map(e => {
+                let date = new Date(e.start.dateTime || e.start.date);
+                let day = date.getDate();
+                let month = date.toLocaleString('fr-FR', { month: 'short' }).replace('.', '');
+                let time = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+                return `<div class="cal-item"><div class="cal-date"><div class="cal-day">${day}</div><div class="cal-month">${month}</div></div><div style="flex:1"><div style="font-weight:600; color:var(--text);">${e.summary || "(Sans titre)"}</div><div style="font-size:13px; color:var(--text-gray);">${time} - ${e.hangoutLink ? '<a href="'+e.hangoutLink+'" target="_blank" style="color:var(--blue)">Google Meet</a>' : 'Sur place'}</div></div></div>`;
+            }).join('');
+            document.getElementById('cal-list').innerHTML = html;
+
+            // AI Analysis
+            let analysis = `<div class="task-item" style="border-left-color:var(--blue)">🗓️ <strong>Analyse de la semaine:</strong> Vous avez ${data.items.length} événements programmés.</div>`;
+            if(data.items.length > 5) analysis += `<div class="task-item" style="border-left-color:var(--yellow)">⚠️ <strong>Alerte Burnout:</strong> Votre agenda est très chargé. L'IA recommande de bloquer un créneau de 2h demain pour du travail profond sans interruption.</div>`;
+            if(data.items.some(e => e.summary && e.summary.toLowerCase().includes("rendez-vous"))) analysis += `<div class="task-item" style="border-left-color:var(--purple)">🤝 <strong>Opportunité:</strong> Rendez-vous client détecté. Pensez à préparer un compte-rendu à l'avance avec ZenDesk IA.</div>`;
+            
+            document.getElementById('cal-analysis').innerHTML = analysis;
+        }).catch(err => { if(err.message !== "Token expired") document.getElementById('cal-list').innerHTML = `<div style="color: var(--red); padding:20px;">${err.message}. Activez l'API Google Calendar.</div>`; });
+    }
 
     // --- ZENDESK DASHBOARD ---
     function syncGmail() {
@@ -259,131 +298,29 @@
     function extractTasks() { const t=state.currentEmail.body; const r=/(il faut|pensez à|préparer|envoyer|rappeler|valider) ([^\.!?\n]{5,60})/gi; let m, tasks=[]; while((m=r.exec(t))!==null) tasks.push(m[0]); const el=document.getElementById('ai-action-result'); el.style.display='block'; el.innerHTML=tasks.length>0?tasks.map(x=>`<div class="task-item">${x}</div>`).join(''):`<div class="task-item">Aucune tâche.</div>`; }
     function translateEmail() { const el=document.getElementById('ai-action-result'); el.style.display='block'; el.innerHTML=`<div class="task-item" style="border-left-color:var(--yellow)"><div class="loader"></div> Traduction...</div>`; fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(state.currentEmail.body.substring(0,500))}&langpair=fr|en`).then(r=>r.json()).then(d=>{ if(d.responseData) el.innerHTML=`<div class="task-item" style="border-left-color:var(--yellow)">🌍 ${d.responseData.translatedText}</div>`; }); }
 
-    // --- COMPTA DASHBOARD (CSV Bank + Chart) ---
-    function runCompta(e) { 
-        const f=e.target.files[0]; if(!f) return; const r=new FileReader(); 
-        r.onload=ev => { 
-            const l=ev.target.result.split('\n'); let rev=0, exp=0, rows='', tva=0; 
-            for(let i=1;i<l.length;i++){ const c=l[i].split(/;|,/); if(c.length>=3){ let a=parseFloat(c[c.length-1].replace(/\s/g,'').replace(',','.').replace(/[^\d.-]/g,'')); if(!isNaN(a)){ if(a>0){rev+=a; tva+=a*0.2;} else {exp+=Math.abs(a); tva-=Math.abs(a)*0.2;} rows+=`<tr><td>${c[0]}</td><td>${c[1]}</td><td style="color:${a>0?'var(--green)':'var(--red)'}">${a.toFixed(2)}€</td></tr>`; } } } 
-            document.getElementById('bank-status').innerText='Analyse OK'; document.getElementById('bank-status').style.color='var(--green)'; 
-            document.getElementById('kpi-rev').innerText=rev.toLocaleString('fr-FR')+'€'; document.getElementById('kpi-exp').innerText=exp.toLocaleString('fr-FR')+'€'; document.getElementById('kpi-tva').innerText=Math.abs(tva).toLocaleString('fr-FR')+'€'; document.getElementById('kpi-runway').innerText=exp>0?(rev/exp).toFixed(1)+'x':'∞'; 
-            document.getElementById('compta-table').innerHTML=`<table><tr><th>Date</th><th>Desc</th><th>Montant</th></tr>${rows}</table>`; 
-            
-            // Generate Chart
-            let maxVal = Math.max(rev, exp);
-            let revH = maxVal > 0 ? (rev/maxVal)*150 : 0;
-            let expH = maxVal > 0 ? (exp/maxVal)*150 : 0;
-            document.getElementById('compta-chart').innerHTML = `
-                <div class="chart-container">
-                    <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
-                        <div class="chart-bar" style="height:0px; background: var(--green);" data-h="${revH}"></div>
-                        <div style="font-size:12px; color:var(--text-gray);">Revenus</div>
-                    </div>
-                    <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
-                        <div class="chart-bar" style="height:0px; background: var(--red);" data-h="${expH}"></div>
-                        <div style="font-size:12px; color:var(--text-gray);">Dépenses</div>
-                    </div>
-                </div>`;
-            setTimeout(() => { document.querySelectorAll('.chart-bar').forEach(b => b.style.height = b.getAttribute('data-h') + 'px'); }, 100);
-        }; 
-        r.readAsText(f); 
-    }
+    // --- COMPTA DASHBOARD ---
+    function runCompta(e) { const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=ev => { const l=ev.target.result.split('\n'); let rev=0, exp=0, rows='', tva=0; for(let i=1;i<l.length;i++){ const c=l[i].split(/;|,/); if(c.length>=3){ let a=parseFloat(c[c.length-1].replace(/\s/g,'').replace(',','.').replace(/[^\d.-]/g,'')); if(!isNaN(a)){ if(a>0){rev+=a; tva+=a*0.2;} else {exp+=Math.abs(a); tva-=Math.abs(a)*0.2;} rows+=`<tr><td>${c[0]}</td><td>${c[1]}</td><td style="color:${a>0?'var(--green)':'var(--red)'}">${a.toFixed(2)}€</td></tr>`; } } } document.getElementById('bank-status').innerText='Analyse OK'; document.getElementById('bank-status').style.color='var(--green)'; document.getElementById('kpi-rev').innerText=rev.toLocaleString('fr-FR')+'€'; document.getElementById('kpi-exp').innerText=exp.toLocaleString('fr-FR')+'€'; document.getElementById('kpi-tva').innerText=Math.abs(tva).toLocaleString('fr-FR')+'€'; document.getElementById('kpi-runway').innerText=exp>0?(rev/exp).toFixed(1)+'x':'∞'; document.getElementById('compta-table').innerHTML=`<table><tr><th>Date</th><th>Desc</th><th>Montant</th></tr>${rows}</table>`; let maxVal = Math.max(rev, exp); let revH = maxVal > 0 ? (rev/maxVal)*150 : 0; let expH = maxVal > 0 ? (exp/maxVal)*150 : 0; document.getElementById('compta-chart').innerHTML = `<div class="chart-container"><div style="display:flex;flex-direction:column;align-items:center;gap:8px"><div class="chart-bar" style="height:0px;background:var(--green)" data-h="${revH}"></div><div style="font-size:12px;color:var(--text-gray)">Revenus</div></div><div style="display:flex;flex-direction:column;align-items:center;gap:8px"><div class="chart-bar" style="height:0px;background:var(--red)" data-h="${expH}"></div><div style="font-size:12px;color:var(--text-gray)">Dépenses</div></div></div>`; setTimeout(() => { document.querySelectorAll('.chart-bar').forEach(b => b.style.height = b.getAttribute('data-h') + 'px'); }, 100); }; r.readAsText(f); }
 
-    // --- TALENTHUNTER (Tesseract.js OCR Engine) ---
-    function runRecruteurImage(e) { 
-        const f=e.target.files[0]; if(!f) return; 
-        document.getElementById('recruteur-content').innerHTML = `<div class="loader"></div> <br><br>Initialisation du moteur OCR Tesseract.js...<br><br><span style="font-size:12px; color:var(--text-gray);">Lecture du CV en cours (peut prendre 10-15s pour les designs Canva).</span>`;
-        
-        Tesseract.recognize(
-            f,
-            'fra+eng',
-            { logger: m => console.log(m) }
-        ).then(({ data: { text } }) => {
-            processCV(text);
-        }).catch(err => {
-            document.getElementById('recruteur-content').innerHTML = "Erreur de lecture OCR. Vérifiez la console.";
-        });
-    }
+    // --- TALENTHUNTER ---
+    function runRecruteurImage(e) { const f=e.target.files[0]; if(!f) return; document.getElementById('recruteur-content').innerHTML = `<div class="loader"></div> <br><br>OCR Tesseract.js en cours...`; Tesseract.recognize(f, 'fra+eng', { logger: m => console.log(m) }).then(({ data: { text } }) => { processCV(text); }).catch(() => document.getElementById('recruteur-content').innerHTML = "Erreur de lecture OCR."); }
     function processCV(text) {
         const emailM = text.match(/[\w.+-]+@[\w-]+\.[\w.-]+/);
         const wordsCount = text.split(' ').length;
-        
-        if(!emailM || wordsCount < 50) {
-            document.getElementById('recruteur-content').innerHTML = `
-                <div class="alert-box">⚠️ Document non valide. L'IA n'a pas détecté d'email professionnel ou le texte est trop court. Veuillez importer un vrai CV.</div>
-                <div class="card" style="padding: 16px; background: var(--surface-2); margin-top: 16px;">
-                    <div class="card-title" style="margin-bottom: 8px;">Texte extrait (Débug) :</div>
-                    <textarea readonly style="min-height: 100px; font-size: 11px;">${text.substring(0, 200)}</textarea>
-                </div>`;
-            return;
-        }
-
+        if(!emailM || wordsCount < 50) { document.getElementById('recruteur-content').innerHTML = `<div class="alert-box">⚠️ Document non valide. Aucun email ou texte trop court.</div><div class="card" style="padding: 16px; background: var(--surface-2); margin-top: 16px;"><div class="card-title" style="margin-bottom: 8px;">Texte extrait :</div><textarea readonly style="min-height: 100px; font-size: 11px;">${text.substring(0, 200)}</textarea></div>`; return; }
         const expM = text.match(/(\d+)\s*an/);
         let hS = ["React","Node","Python","SQL","Docker","AWS","Java","Management","Marketing","Figma","PHP","JavaScript","Agile","SAAS","Photoshop","Angular","Vue"].filter(s => text.toLowerCase().includes(s.toLowerCase()));
         let y = expM ? parseInt(expM[1]) : 0;
-        
         let score = Math.min(100, (hS.length * 8) + (y * 5) + 35);
         let hourlyRate = 15 + (y * 2) + (hS.length * 1.5); 
-        
         let pipelineStatus = score > 75 ? "Entretien Technique" : score > 50 ? "Appel RH" : "Refusé";
         let pipelineColor = score > 75 ? "badge-green" : score > 50 ? "badge-yellow" : "badge-red";
-
-        document.getElementById('recruteur-content').innerHTML = `
-            <div class="grid-2" style="margin-bottom: 16px;">
-                <div class="card" style="padding: 16px;">
-                    <div class="stat-label">Match Score</div>
-                    <div class="stat-value" style="color: var(--green)">${score}%</div>
-                    <div class="progress-bar"><div class="progress-fill" style="width:${score}%; background: var(--green);"></div></div>
-                </div>
-                <div class="card" style="padding: 16px;">
-                    <div class="stat-label">Estimation Taux Horaire</div>
-                    <div class="stat-value" style="color: var(--blue)">${hourlyRate.toFixed(0)}€/h</div>
-                    <div class="stat-change" style="color: var(--text-gray);">Estimé sur ${y} ans d'exp.</div>
-                </div>
-            </div>
-            <div class="card" style="padding: 16px; margin-bottom: 16px;">
-                <div class="card-title" style="margin-bottom: 8px;">Statut Pipeline RH</div>
-                <span class="badge ${pipelineColor}" style="font-size: 14px; padding: 6px 12px;">${pipelineStatus}</span>
-            </div>
-            <div class="task-item" style="border-left-color: var(--blue)"><strong>Email extrait:</strong> ${emailM[0]}</div>
-            <div class="task-item" style="border-left-color: var(--purple)"><strong>Compétences détectées:</strong> ${hS.join(', ') || 'Aucune hard skill clé trouvée'}</div>
-            <div class="task-item" style="border-left-color: var(--yellow)"><strong>Exp. Détectée:</strong> ${y} ans</div>
-            <div style="margin-top: 16px; font-size: 12px; color: var(--text-gray);">TEXTE BRUT EXTRAIT PAR TESSERACT:</div>
-            <textarea readonly style="margin-top: 8px; min-height: 120px; font-size: 11px;">${text.substring(0, 500)}</textarea>
-        `;
+        document.getElementById('recruteur-content').innerHTML = `<div class="grid-2" style="margin-bottom: 16px;"><div class="card" style="padding: 16px;"><div class="stat-label">Match Score</div><div class="stat-value" style="color: var(--green)">${score}%</div><div class="progress-bar"><div class="progress-fill" style="width:${score}%; background: var(--green);"></div></div></div><div class="card" style="padding: 16px;"><div class="stat-label">Estimation Taux Horaire</div><div class="stat-value" style="color: var(--blue)">${hourlyRate.toFixed(0)}€/h</div><div class="stat-change" style="color: var(--text-gray);">Estimé sur ${y} ans d'exp.</div></div></div><div class="card" style="padding: 16px; margin-bottom: 16px;"><div class="card-title" style="margin-bottom: 8px;">Statut Pipeline RH</div><span class="badge ${pipelineColor}" style="font-size: 14px; padding: 6px 12px;">${pipelineStatus}</span></div><div class="task-item" style="border-left-color: var(--blue)"><strong>Email extrait:</strong> ${emailM[0]}</div><div class="task-item" style="border-left-color: var(--purple)"><strong>Compétences détectées:</strong> ${hS.join(', ') || 'Aucune hard skill clé trouvée'}</div><div class="task-item" style="border-left-color: var(--yellow)"><strong>Exp. Détectée:</strong> ${y} ans</div><div style="margin-top: 16px; font-size: 12px; color: var(--text-gray);">TEXTE BRUT EXTRAIT:</div><textarea readonly style="margin-top: 8px; min-height: 120px; font-size: 11px;">${text.substring(0, 500)}</textarea>`;
     }
 
-    // --- COPYWRITER (Studio Marketing) ---
-    function runCopy() {
-        const p = document.getElementById('copy-product').value;
-        const desc = document.getElementById('copy-desc').value;
-        const aud = document.getElementById('copy-aud').value;
-        if(!p) return;
-        document.getElementById('copy-content').innerHTML = `<div class="loader"></div> Génération Stratégique...`;
-        setTimeout(() => {
-            const words = desc.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/);
-            const stopWords = ['le','la','les','un','une','de','des','et','ou','pour','avec','dans','sur','qui','que','une','est','au','en'];
-            const freq = {}; words.forEach(w => { if(w.length > 3 && !stopWords.includes(w)) freq[w] = (freq[w]||0)+1; });
-            const kws = Object.keys(freq).sort((a,b)=>freq[b]-freq[a]).slice(0,5);
-            document.getElementById('copy-content').innerHTML = `
-                <div class="card-title" style="margin-bottom: 12px;">🎯 Persona & Strategie</div>
-                <div class="task-item" style="border-left-color: var(--blue)"><strong>Persona Cible:</strong> ${aud || 'Consommateurs généraux'}. ${p} résout leur manque de temps.</div>
-                <div class="task-item" style="border-left-color: var(--blue)"><strong>Mots-clés SEO extraits:</strong> ${kws.join(', ')}</div>
-                <div class="card-title" style="margin: 20px 0 12px;">🔍 Package SEO</div>
-                <div class="task-item" style="border-left-color: var(--green)"><strong>Title:</strong> ${p} : Guide, Prix et Avis ${kws[0] ? '| ' + kws[0] : ''}</div>
-                <div class="task-item" style="border-left-color: var(--green)"><strong>Meta Desc:</strong> Découvrez ${p}, la solution idéale pour ${aud}. ${desc.substring(0,100)}...</div>
-                <div class="card-title" style="margin: 20px 0 12px;">📢 Google & Facebook Ads</div>
-                <div class="task-item" style="border-left-color: var(--yellow)"><strong>Google Ad:</strong> ${p} - La Meilleure Solution</div>
-                <div class="task-item" style="border-left-color: var(--yellow)"><strong>FB Ad:</strong> 🚀 Arrêtez de chercher ! ${p} est enfin là. Conçu pour ${aud}. Cliquez pour profiter.</div>
-                <div class="card-title" style="margin: 20px 0 12px;">✉️ Séquence Cold Email</div>
-                <div class="task-item" style="border-left-color: var(--purple)"><strong>Email 1:</strong> Objet: Une question sur votre ${kws[0] || 'stratégie'}. Bonjour, ${p} pourrait vous faire gagner 10h/semaine.</div>
-                <button class="btn btn-outline btn-small" style="margin-top: 16px;" onclick="copyToClipboard('${p} - La Meilleure Solution')">Copier l'Ad</button>
-            `;
-        }, 1500);
-    }
-    function copyToClipboard(text) { navigator.clipboard.writeText(text).then(() => showToast("Copié dans le presse-papier !", "success")); }
+    // --- COPYWRITER ---
+    function runCopy() { const p = document.getElementById('copy-product').value; const desc = document.getElementById('copy-desc').value; const aud = document.getElementById('copy-aud').value; if(!p) return; document.getElementById('copy-content').innerHTML = `<div class="loader"></div> Génération...`; setTimeout(() => { const words = desc.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/); const stopWords = ['le','la','les','un','une','de','des','et','ou','pour','avec','dans','sur','qui','que','une','est','au','en']; const freq = {}; words.forEach(w => { if(w.length > 3 && !stopWords.includes(w)) freq[w] = (freq[w]||0)+1; }); const kws = Object.keys(freq).sort((a,b)=>freq[b]-freq[a]).slice(0,5); document.getElementById('copy-content').innerHTML = `<div class="card-title" style="margin-bottom: 12px;">🎯 Persona & Strategie</div><div class="task-item" style="border-left-color: var(--blue)"><strong>Persona Cible:</strong> ${aud || 'Consommateurs généraux'}. ${p} résout leur manque de temps.</div><div class="task-item" style="border-left-color: var(--blue)"><strong>Mots-clés SEO extraits:</strong> ${kws.join(', ')}</div><div class="card-title" style="margin: 20px 0 12px;">🔍 Package SEO</div><div class="task-item" style="border-left-color: var(--green)"><strong>Title:</strong> ${p} : Guide, Prix et Avis ${kws[0] ? '| ' + kws[0] : ''}</div><div class="task-item" style="border-left-color: var(--green)"><strong>Meta Desc:</strong> Découvrez ${p}, la solution idéale pour ${aud}. ${desc.substring(0,100)}...</div><div class="card-title" style="margin: 20px 0 12px;">📢 Google & Facebook Ads</div><div class="task-item" style="border-left-color: var(--yellow)"><strong>Google Ad:</strong> ${p} - La Meilleure Solution</div><div class="task-item" style="border-left-color: var(--yellow)"><strong>FB Ad:</strong> 🚀 Arrêtez de chercher ! ${p} est enfin là. Conçu pour ${aud}. Cliquez pour profiter.</div><div class="card-title" style="margin: 20px 0 12px;">✉️ Séquence Cold Email</div><div class="task-item" style="border-left-color: var(--purple)"><strong>Email 1:</strong> Objet: Une question sur votre ${kws[0] || 'stratégie'}. Bonjour, ${p} pourrait vous faire gagner 10h/semaine.</div>`; }, 1500); }
 
-    // --- SUPPLYCHAIN (ERP CSV + Visual Gauges) ---
+    // --- SUPPLYCHAIN ---
     function runSupplyERP(e) { const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=ev => { const l=ev.target.result.split('\n'); let rows=''; for(let i=1;i<l.length;i++){ const c=l[i].split(/;|,/); if(c.length>=4){ let stock=parseFloat(c[1]); let sales=parseFloat(c[2]); let lead=parseFloat(c[3]); if(!isNaN(stock)&&!isNaN(sales)&&!isNaN(lead)&&sales>0){ let ss=Math.ceil(sales*lead*0.2); let rop=Math.ceil(sales*lead+ss); let days=(stock/sales).toFixed(1); let status = stock < rop ? "badge-red" : "badge-green"; let color = stock < rop ? "var(--red)" : "var(--green)"; let stockPct = Math.min(100, (stock/rop)*100); rows+=`<tr><td class="white">${c[0]}</td><td>${stock}</td><td>${rop}</td><td>${days} j</td><td><span class="badge ${status}">${stock < rop ? 'Urgent' : 'OK'}</span></td></tr><tr><td colspan="5" style="padding:0 8px 12px;"><div class="progress-bar"><div class="progress-fill" style="width:${stockPct}%; background:${color};"></div></div></td></tr>`; } } } document.getElementById('erp-status').innerText='Analyse OK'; document.getElementById('erp-status').style.color='var(--green)'; document.getElementById('supply-content').innerHTML=`<table><tr><th>Produit</th><th>Stock</th><th>Point Réappro</th><th>Rupture dans</th><th>Statut</th></tr>${rows}</table>`; }; r.readAsText(f); }
 
     // --- LEGAL EAGLE ---
@@ -392,145 +329,65 @@
     // --- SALES PREDICT ---
     function runSales() { const c=document.getElementById('sales-input').value; if(!c) return; document.getElementById('sales-content').innerHTML=`<div class="loader"></div> MEDDIC...`; setTimeout(()=>{ let score=10, bant=[]; if(/budget.*?(k|eur|€|euro)/i.test(c)){score+=30; bant.push("Budget ✓");} if(/décideur|ceo|directeur|cto/i.test(c)){score+=25; bant.push("Authority ✓");} if(/urgent|asap|immédiat/i.test(c)){score+=25; bant.push("Timeline ✓");} if(/besoin|problème|douleur/i.test(c)){score+=20; bant.push("Need ✓");} score=Math.min(95,score); document.getElementById('sales-content').innerHTML=`<div style="text-align:center;margin-bottom:20px"><div style="font-size:36px;font-weight:700;color:${score>60?'var(--green)':'var(--red)'}">${score}%</div><div style="font-size:12px;color:var(--text-gray)">PROBABILITY OF CLOSING</div></div><div class="task-item"><strong>BANT:</strong> ${bant.length>0?bant.join(', '):'Aucun critère BANT détecté'}</div><div class="task-item" style="border-left-color:var(--blue)"><strong>Action:</strong> ${score>60?'Prospect chaud. Call immédiat.':'Froid. Nurturing mail requis.'}</div>`; }, 1000); }
 
-    // --- DEV REVIEWER (REAL REFACTORING) ---
-    function runDev() {
-        const c = document.getElementById('dev-input').value;
-        if(!c) return;
-        document.getElementById('dev-content').innerHTML = `<div class="loader"></div> Analyse et refactoring...`;
-        
-        setTimeout(() => {
-            let issues = "";
-            let correctedCode = c;
-
-            if(correctedCode.includes("var ")) {
-                issues += `<div class="task-item" style="border-left-color:var(--yellow)"><strong style="color:var(--yellow)">⚠️ Corrigé:</strong> 'var' remplacé par 'let' (portée de bloc).</div>`;
-                correctedCode = correctedCode.replace(/var /g, 'let ');
-            }
-            
-            if(/[^=!]==[^=]/.test(correctedCode)) {
-                issues += `<div class="task-item" style="border-left-color:var(--red)"><strong style="color:var(--red)">🔴 Corrigé:</strong> '==' remplacé par '===' (stricte égalité).</div>`;
-                correctedCode = correctedCode.replace(/([^=!])==([^=])/g, '$1===$2');
-            }
-            
-            if(correctedCode.includes("eval(")) {
-                issues += `<div class="task-item" style="border-left-color:var(--red)"><strong style="color:var(--red)">🔴 Sécurité:</strong> 'eval()' neutralisé.</div>`;
-                correctedCode = correctedCode.replace(/eval\((.*?)\)/g, '/* eval removed for security: $1 */');
-            }
-            
-            if(correctedCode.includes("innerHTML")) {
-                issues += `<div class="task-item" style="border-left-color:var(--red)"><strong style="color:var(--red)">🔴 XSS:</strong> 'innerHTML' remplacé par 'textContent'.</div>`;
-                correctedCode = correctedCode.replace(/innerHTML/g, 'textContent');
-            }
-
-            if(issues === "") issues = `<div class="task-item" style="border-left-color:var(--green)"><strong style="color:var(--green)">✓ Parfait:</strong> Aucun bug détecté. Le code est propre et sécurisé.</div>`;
-
-            document.getElementById('dev-content').innerHTML = `
-                <div class="card-title" style="margin-bottom: 12px;">Rapport de Correction Automatique</div>
-                ${issues}
-                <div class="card-title" style="margin: 20px 0 12px;">Code Corrigé par l'IA</div>
-                <textarea id="corrected-code" readonly style="min-height: 200px; color: var(--green); background: #030303; border: 1px solid var(--green); border-radius: 6px; padding: 12px;">${correctedCode}</textarea>
-                <button class="btn btn-blue" style="margin-top: 12px; width: 100%;" onclick="copyCorrectedCode()">Copier le code corrigé</button>
-            `;
-        }, 1500);
-    }
-    function copyCorrectedCode() { navigator.clipboard.writeText(document.getElementById('corrected-code').value).then(() => showToast("Code corrigé copié !", "success")); }
+    // --- DEV REVIEWER ---
+    function runDev() { const c = document.getElementById('dev-input').value; if(!c) return; document.getElementById('dev-content').innerHTML = `<div class="loader"></div> Analyse...`; setTimeout(() => { let issues = ""; let cc = c; if(cc.includes("var ")) { issues += `<div class="task-item" style="border-left-color:var(--yellow)"><strong style="color:var(--yellow)">⚠️ Corrigé:</strong> 'var' remplacé par 'let'.</div>`; cc = cc.replace(/var /g, 'let '); } if(/[^=!]==[^=]/.test(cc)) { issues += `<div class="task-item" style="border-left-color:var(--red)"><strong style="color:var(--red)">🔴 Corrigé:</strong> '==' remplacé par '==='.</div>`; cc = cc.replace(/([^=!])==([^=])/g, '$1===$2'); } if(cc.includes("eval(")) { issues += `<div class="task-item" style="border-left-color:var(--red)"><strong style="color:var(--red)">🔴 Sécurité:</strong> 'eval()' neutralisé.</div>`; cc = cc.replace(/eval\((.*?)\)/g, '/* eval removed for security: $1 */'); } if(cc.includes("innerHTML")) { issues += `<div class="task-item" style="border-left-color:var(--red)"><strong style="color:var(--red)">🔴 XSS:</strong> 'innerHTML' remplacé par 'textContent'.</div>`; cc = cc.replace(/innerHTML/g, 'textContent'); } if(issues === "") issues = `<div class="task-item" style="border-left-color:var(--green)"><strong style="color:var(--green)">✓ Parfait:</strong> Aucun bug détecté.</div>`; document.getElementById('dev-content').innerHTML = `<div class="card-title" style="margin-bottom: 12px;">Rapport</div>${issues}<div class="card-title" style="margin: 20px 0 12px;">Code Corrigé</div><textarea id="corrected-code" readonly style="min-height: 200px; color: var(--green); background: #030303; border: 1px solid var(--green); border-radius: 6px; padding: 12px;">${cc}</textarea><button class="btn btn-blue" style="margin-top: 12px; width: 100%;" onclick="navigator.clipboard.writeText(document.getElementById('corrected-code').value).then(()=>showToast('Copié !', 'success'))">Copier le code</button>`; }, 1500); }
 
     // --- UI VIEWS ---
     function renderDynamicViews() {
         let html = `
-        <div class="view" id="view-sav">
-            ${state.connections.gmail ? `
+        <div class="view" id="view-calendar">
+            ${state.connections.google ? `
+            <div class="grid-2">
+                <div class="card" style="padding:0;max-height:650px;overflow-y:auto">
+                    <div style="padding:16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;background:var(--surface-2)">
+                        <div class="card-title">Agenda Google Calendar</div>
+                        <button class="btn btn-blue btn-small" onclick="syncCalendar()">Sync</button>
+                    </div>
+                    <div id="cal-list" style="font-size:13px;text-align:center;padding:40px">Cliquez sur Sync pour charger votre agenda réel.</div>
+                </div>
+                <div class="card" style="min-height:650px">
+                    <div class="card-header"><div class="card-title">Analyse & Recommandations IA</div></div>
+                    <div id="cal-analysis" style="text-align:center;padding:60px;color:var(--text-dark)">L'IA analysera votre charge de travail ici.</div>
+                </div>
+            </div>` : `<div class="card" style="text-align:center;padding:60px"><h2>Google Requis</h2><button class="btn btn-blue" style="margin-top:16px" onclick="switchView('integrations', document.querySelectorAll('.nav-item')[1])">Aller aux Connexions</button></div>`}
+        </div>`;
+
+        html += `<div class="view" id="view-sav">
+            ${state.connections.google ? `
             <div class="grid-3">
                 <div class="card"><div class="stat-label">Tickets Récents</div><div class="stat-value" id="kpi-tickets">0</div></div>
                 <div class="card"><div class="stat-label">Urgents Détectés</div><div class="stat-value" style="color:var(--red)" id="kpi-urgent">0</div></div>
                 <div class="card"><div class="stat-label">Traités par l'IA</div><div class="stat-value" style="color:var(--green)" id="kpi-solved">0</div></div>
             </div>
             <div class="grid-2">
-                <div class="card" style="padding:0;max-height:600px;overflow-y:auto">
-                    <div style="padding:16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;background:var(--surface-2)">
-                        <div class="card-title">Inbox Gmail (${state.user?state.user.email.split('@')[0]:''})</div>
-                        <button class="btn btn-blue btn-small" onclick="syncGmail()">Sync</button>
-                    </div>
-                    <div id="sav-email-list" style="font-size:13px;text-align:center;padding:40px">Cliquez sur Sync.</div>
-                </div>
-                <div class="card" style="min-height:600px">
-                    <div class="card-header"><div class="card-title">Détails & Actions IA</div></div>
-                    <div id="sav-content" style="text-align:center;padding:60px;color:var(--text-dark)">Sélectionnez un email...</div>
-                </div>
-            </div>` : `<div class="card" style="text-align:center;padding:60px"><h2>Gmail Requis</h2><button class="btn btn-blue" style="margin-top:16px" onclick="switchView('integrations', document.querySelectorAll('.nav-item')[1])">Aller aux Connexions</button></div>`}
+                <div class="card" style="padding:0;max-height:600px;overflow-y:auto"><div style="padding:16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;background:var(--surface-2)"><div class="card-title">Inbox Gmail</div><button class="btn btn-blue btn-small" onclick="syncGmail()">Sync</button></div><div id="sav-email-list" style="font-size:13px;text-align:center;padding:40px">Cliquez sur Sync.</div></div>
+                <div class="card" style="min-height:600px"><div class="card-header"><div class="card-title">Détails & Actions IA</div></div><div id="sav-content" style="text-align:center;padding:60px;color:var(--text-dark)">Sélectionnez un email...</div></div>
+            </div>` : `<div class="card" style="text-align:center;padding:60px"><h2>Google Requis</h2><button class="btn btn-blue" style="margin-top:16px" onclick="switchView('integrations', document.querySelectorAll('.nav-item')[1])">Aller aux Connexions</button></div>`}
         </div>`;
 
-        html += `<div class="view" id="view-compta">
-            <div class="grid-4">
-                <div class="card"><div class="stat-label">Revenus</div><div class="stat-value" style="color:var(--green)" id="kpi-rev">0€</div></div>
-                <div class="card"><div class="stat-label">Dépenses</div><div class="stat-value" style="color:var(--red)" id="kpi-exp">0€</div></div>
-                <div class="card"><div class="stat-label">TVA Net</div><div class="stat-value" id="kpi-tva">0€</div></div>
-                <div class="card"><div class="stat-label">Runway</div><div class="stat-value" id="kpi-runway">0x</div></div>
-            </div>
-            <div class="grid-2">
-                <div class="card">
-                    <div class="card-header"><div class="card-title">Flux de Trésorerie</div></div>
-                    <div id="compta-chart" style="color:var(--text-dark); text-align:center; padding-top:80px;">Importez un CSV pour générer le graphique.</div>
-                </div>
-                <div class="card">
-                    <div class="card-header"><div class="card-title">Transactions Réelles</div></div>
-                    <div id="compta-table" style="text-align:center;color:var(--text-gray);padding:20px;max-height:300px; overflow-y:auto;">Importez votre CSV dans Connexions.</div>
-                </div>
-            </div>
-        </div>`;
-
-        html += `<div class="view" id="view-recruteur">
-            <div class="grid-2">
-                <div class="card">
-                    <div class="card-header"><div class="card-title">Import Image CV (OCR Tesseract.js)</div></div>
-                    <div class="file-drop" style="padding: 40px;" onclick="document.getElementById('cv-img').click()">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2" style="margin: 0 auto 12px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
-                        <p style="font-weight:600">Importer une photo de CV</p>
-                        <input type="file" id="cv-img" accept="image/*" style="display:none" onchange="runRecruteurImage(event)">
-                    </div>
-                </div>
-                <div class="card" style="min-height: 400px;">
-                    <div class="card-header"><div class="card-title">Profil Candidat & Pipeline RH</div></div>
-                    <div id="recruteur-content" style="text-align:center;padding:60px;color:var(--text-dark)">Importez l'image pour extraire le profil. L'OCR local va lire le document.</div>
-                </div>
-            </div>
-        </div>`;
-
-        html += `<div class="view" id="view-copy"><div class="grid-2"><div class="card"><div class="card-header"><div class="card-title">Briefing Marketing</div></div><input type="text" id="copy-product" placeholder="Nom Produit" style="margin-bottom:12px"><input type="text" id="copy-aud" placeholder="Audience Cible" style="margin-bottom:12px"><textarea id="copy-desc" style="min-height:120px" placeholder="Description détaillée du produit et ses features"></textarea><button class="btn btn-blue" style="margin-top:12px;width:100%" onclick="runCopy()">Générer Stratégie</button></div><div class="card" style="max-height:750px;overflow-y:auto"><div class="card-header"><div class="card-title">Studio Marketing IA</div></div><div id="copy-content" style="text-align:center;padding:60px;color:var(--text-dark)">Résultat...</div></div></div></div>`;
-
-        html += `<div class="view" id="view-supply"><div class="card"><div class="card-header"><div class="card-title">Inventaire & Prédictions (ERP)</div></div><div id="supply-content" style="text-align:center;color:var(--text-gray);padding:20px">Importez le CSV ERP dans l'onglet Connexions (Format: Produit;Stock;Ventes/Jour;Délai).</div></div></div>`;
-
-        html += `<div class="view" id="view-sales"><div class="grid-2"><div class="card"><div class="card-header"><div class="card-title">Description Lead</div></div><textarea id="sales-input" style="min-height:220px" placeholder="Décrivez prospect (Budget, Décideur, Urgence)"></textarea><button class="btn btn-blue" style="margin-top:12px;width:100%" onclick="runSales()">Prédire</button></div><div class="card"><div class="card-header"><div class="card-title">Résultat</div></div><div id="sales-content" style="text-align:center;padding:60px;color:var(--text-dark)">Résultat...</div></div></div></div>`;
-
-        html += `<div class="view" id="view-legal"><div class="grid-2"><div class="card"><div class="card-header"><div class="card-title">Contrat</div></div><textarea id="legal-input" style="min-height:220px" placeholder="Collez le contrat..."></textarea><button class="btn btn-blue" style="margin-top:12px;width:100%" onclick="runLegal()">Scanner</button></div><div class="card"><div class="card-header"><div class="card-title">Risque Juridique</div></div><div id="legal-content" style="text-align:center;padding:60px;color:var(--text-dark)">Résultat...</div></div></div></div>`;
-
-        html += `<div class="view" id="view-dev">
-            <div class="grid-2">
-                <div class="card">
-                    <div class="card-header"><div class="card-title">Code Source à Auditer</div></div>
-                    <textarea id="dev-input" style="min-height:300px;" placeholder="var x = 1; if(x == 1) { document.body.innerHTML = '<h1>Hello</h1>'; eval('alert(1)'); }"></textarea>
-                    <button class="btn btn-blue" style="margin-top:12px;width:100%" onclick="runDev()">Lancer l'Audit & Refactoring</button>
-                </div>
-                <div class="card" style="min-height: 400px;">
-                    <div class="card-header"><div class="card-title">Rapport & Code Corrigé</div></div>
-                    <div id="dev-content" style="text-align:center;padding:60px;color:var(--text-dark)">Le code corrigé apparaîtra ici...</div>
-                </div>
-            </div>
-        </div>`;
+        html += `<div class="view" id="view-compta"><div class="grid-4"><div class="card"><div class="stat-label">Revenus</div><div class="stat-value" style="color:var(--green)" id="kpi-rev">0€</div></div><div class="card"><div class="stat-label">Dépenses</div><div class="stat-value" style="color:var(--red)" id="kpi-exp">0€</div></div><div class="card"><div class="stat-label">TVA Net</div><div class="stat-value" id="kpi-tva">0€</div></div><div class="card"><div class="stat-label">Runway</div><div class="stat-value" id="kpi-runway">0x</div></div></div><div class="grid-2"><div class="card"><div class="card-header"><div class="card-title">Flux de Trésorerie</div></div><div id="compta-chart" style="color:var(--text-dark);text-align:center;padding-top:80px">Importez un CSV.</div></div><div class="card"><div class="card-header"><div class="card-title">Transactions</div></div><div id="compta-table" style="text-align:center;color:var(--text-gray);padding:20px;max-height:300px;overflow-y:auto">Importez votre CSV.</div></div></div></div>`;
+        html += `<div class="view" id="view-recruteur"><div class="grid-2"><div class="card"><div class="card-header"><div class="card-title">Import Image CV</div></div><div class="file-drop" style="padding:40px" onclick="document.getElementById('cv-img').click()"><p style="font-weight:600">Importer Photo CV</p><input type="file" id="cv-img" accept="image/*" style="display:none" onchange="runRecruteurImage(event)"></div></div><div class="card" style="min-height:400px"><div class="card-header"><div class="card-title">Profil & Pipeline</div></div><div id="recruteur-content" style="text-align:center;padding:60px;color:var(--text-dark)">Résultat...</div></div></div></div>`;
+        html += `<div class="view" id="view-copy"><div class="grid-2"><div class="card"><div class="card-header"><div class="card-title">Briefing</div></div><input type="text" id="copy-product" placeholder="Nom Produit" style="margin-bottom:12px"><input type="text" id="copy-aud" placeholder="Audience" style="margin-bottom:12px"><textarea id="copy-desc" style="min-height:120px" placeholder="Features"></textarea><button class="btn btn-blue" style="margin-top:12px;width:100%" onclick="runCopy()">Générer</button></div><div class="card" style="max-height:750px;overflow-y:auto"><div class="card-header"><div class="card-title">Studio IA</div></div><div id="copy-content" style="text-align:center;padding:60px;color:var(--text-dark)">Résultat...</div></div></div></div>`;
+        html += `<div class="view" id="view-supply"><div class="card"><div class="card-header"><div class="card-title">Inventaire ERP</div></div><div id="supply-content" style="text-align:center;color:var(--text-gray);padding:20px">Importez le CSV ERP.</div></div></div>`;
+        html += `<div class="view" id="view-sales"><div class="grid-2"><div class="card"><div class="card-header"><div class="card-title">Lead</div></div><textarea id="sales-input" style="min-height:220px" placeholder="Décrivez prospect"></textarea><button class="btn btn-blue" style="margin-top:12px;width:100%" onclick="runSales()">Prédire</button></div><div class="card"><div class="card-header"><div class="card-title">Résultat</div></div><div id="sales-content" style="text-align:center;padding:60px;color:var(--text-dark)">Résultat...</div></div></div></div>`;
+        html += `<div class="view" id="view-legal"><div class="grid-2"><div class="card"><div class="card-header"><div class="card-title">Contrat</div></div><textarea id="legal-input" style="min-height:220px" placeholder="Collez le contrat"></textarea><button class="btn btn-blue" style="margin-top:12px;width:100%" onclick="runLegal()">Scanner</button></div><div class="card"><div class="card-header"><div class="card-title">Risque</div></div><div id="legal-content" style="text-align:center;padding:60px;color:var(--text-dark)">Résultat...</div></div></div></div>`;
+        html += `<div class="view" id="view-dev"><div class="grid-2"><div class="card"><div class="card-header"><div class="card-title">Code</div></div><textarea id="dev-input" style="min-height:300px" placeholder="Code..."></textarea><button class="btn btn-blue" style="margin-top:12px;width:100%" onclick="runDev()">Audit</button></div><div class="card" style="min-height:400px"><div class="card-header"><div class="card-title">Correction</div></div><div id="dev-content" style="text-align:center;padding:60px;color:var(--text-dark)">Résultat...</div></div></div></div>`;
 
         document.getElementById('dynamic-views').innerHTML = html;
-        if(state.connections.gmail && document.getElementById('view-sav').classList.contains('active')) { if(state.realEmails.length === 0) syncGmail(); else { displayRealEmails(); } }
+        if(state.connections.google) {
+            if(document.getElementById('view-calendar').classList.contains('active')) syncCalendar();
+            if(document.getElementById('view-sav').classList.contains('active')) { if(state.realEmails.length === 0) syncGmail(); else displayRealEmails(); }
+        }
     }
 
-    function initStore() { document.getElementById('store-grid').innerHTML = agents.map(a => `<div class="app-card"><div class="app-icon-large" style="background:rgba(255,255,255,0.05);border:1px solid ${a.color}33"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${a.color}" stroke-width="2">${a.iconPath}</svg></div><h3>${a.name}</h3><p>${a.desc}</p><div style="margin-bottom:8px"><span class="badge badge-blue">v15.0</span></div><div class="installed-badge">✓ Installé</div></div>`).join(''); }
+    function initStore() { document.getElementById('store-grid').innerHTML = agents.map(a => `<div class="app-card"><div class="app-icon-large" style="background:rgba(255,255,255,0.05);border:1px solid ${a.color}33"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${a.color}" stroke-width="2">${a.iconPath}</svg></div><h3>${a.name}</h3><p>${a.desc}</p><div style="margin-bottom:8px"><span class="badge badge-blue">v16.0</span></div><div class="installed-badge">✓ Installé</div></div>`).join(''); }
     function initNavAgents() { document.getElementById('nav-agents-container').innerHTML = state.installedAgents.map(id => { const a = agents.find(ag => ag.id === id); return `<div class="nav-item" onclick="switchView('${id}', this)"><svg viewBox="0 0 24 24">${a.iconPath}</svg> ${a.name}</div>`; }).join(''); }
-    function switchView(v, el) { document.querySelectorAll('.view').forEach(x => x.classList.remove('active')); document.getElementById('view-' + v).classList.add('active'); document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active')); if(el) el.classList.add('active'); document.getElementById('page-title').innerText = v === 'store' ? 'App Store' : v === 'integrations' ? 'Connexions' : agents.find(a => a.id == v).name; document.querySelector('.content').scrollTop = 0; if(v == 'sav' && state.connections.gmail) { if(state.realEmails.length === 0) syncGmail(); else displayRealEmails(); } }
+    function switchView(v, el) { document.querySelectorAll('.view').forEach(x => x.classList.remove('active')); document.getElementById('view-' + v).classList.add('active'); document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active')); if(el) el.classList.add('active'); document.getElementById('page-title').innerText = v === 'store' ? 'App Store' : v === 'integrations' ? 'Connexions' : agents.find(a => a.id == v).name; document.querySelector('.content').scrollTop = 0; if(state.connections.google) { if(v == 'calendar') syncCalendar(); if(v == 'sav') { if(state.realEmails.length === 0) syncGmail(); else displayRealEmails(); } } }
     let toastTimeout;
     function showToast(msg, type) { const t = document.getElementById('toast'); document.getElementById('toast-text').innerText = msg; t.className = `toast show ${type}`; clearTimeout(toastTimeout); toastTimeout = setTimeout(() => t.classList.remove('show'), 3000); }
 
-    // --- INITIAL LOAD ---
     loadState(); 
-    if(state.connections.gmail) updateUIAfterLogin(); 
+    if(state.connections.google) updateUIAfterLogin(); 
     initStore(); initNavAgents(); renderDynamicViews();
 </script>
 
