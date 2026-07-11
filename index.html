@@ -85,6 +85,7 @@
         .toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface-2); border: 1px solid var(--border); padding: 16px 24px; border-radius: 8px; display: flex; align-items: center; gap: 12px; transform: translateX(400px); transition: transform 0.4s ease; z-index: 101; }
         .toast.show { transform: translateX(0); }
         .toast.success { border-left: 4px solid var(--green); }
+        .toast.error { border-left: 4px solid var(--red); }
 
         .int-card { display: flex; align-items: center; gap: 16px; padding: 16px; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 12px; }
         .int-logo { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-family: var(--font-mono); }
@@ -94,7 +95,6 @@
         
         .feature-btn { padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); cursor: pointer; font-weight: 600; font-size: 12px; transition: 0.2s; margin-right: 8px; margin-bottom: 8px; display: inline-flex; align-items: center; gap: 6px; }
         .feature-btn:hover { border-color: var(--blue); color: var(--blue); }
-        .feature-btn.active { border-color: var(--blue); color: var(--blue); background: rgba(0,112,243,0.1); }
         
         .task-item { padding: 10px; background: var(--surface-2); border-left: 3px solid var(--purple); margin-bottom: 8px; font-size: 13px; color: var(--text); }
         .file-drop { border: 1px dashed var(--border); padding: 32px; text-align: center; border-radius: 12px; cursor: pointer; transition: 0.2s; background: var(--surface-2); }
@@ -128,6 +128,7 @@
                 <img id="user-pic" src="" style="width:32px; height:32px; border-radius:50%;">
                 <span id="user-name" style="font-size:13px; font-weight:500;"></span>
             </div>
+            <button id="logout-btn" class="btn btn-outline" style="display:none; margin-right: 8px;" onclick="logout()">Déconnexion</button>
             <button class="btn btn-outline">Documentation</button>
         </div>
         <div class="content">
@@ -136,7 +137,7 @@
                 <div class="hero">
                     <span class="hero-badge">✦ Agentic Enterprise OS v12.0</span>
                     <h2>Le Futur Centralisé du Travail</h2>
-                    <p>La plus avancée des plateformes IA. Studio Marketing complet, ERP Logistique, Lecture OCR de CV, et Emails Réels via Gmail.</p>
+                    <p>La plus avancée des plateformes IA. Studio Marketing complet, ERP Logistique, Lecture OCR de CV, et Emails Réels via Gmail. Votre session est sauvegardée.</p>
                 </div>
                 <div class="app-grid" id="store-grid"></div>
             </div>
@@ -191,6 +192,44 @@
         { id: 'dev', name: 'CodeReviewer IA', desc: 'Scanne le code, détecte les failles XSS, eval() et la dette technique en direct.', iconPath: '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>', color: '#ff4d4d' }
     ];
 
+    // --- LOCAL STORAGE (Sauvegarde de session) ---
+    function saveState() {
+        localStorage.setItem('workai_session', JSON.stringify({
+            accessToken: state.accessToken,
+            user: state.user,
+            connections: state.connections
+        }));
+    }
+
+    function loadState() {
+        const saved = localStorage.getItem('workai_session');
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                state.accessToken = parsed.accessToken;
+                state.user = parsed.user;
+                state.connections = parsed.connections || { gmail: false };
+            } catch(e) {
+                localStorage.removeItem('workai_session');
+            }
+        }
+    }
+
+    function logout() {
+        localStorage.removeItem('workai_session');
+        state.accessToken = null;
+        state.user = null;
+        state.connections.gmail = false;
+        state.realEmails = [];
+        document.getElementById('gmail-status').innerText = 'Non connecté';
+        document.getElementById('gmail-status').style.color = 'var(--text-gray)';
+        document.getElementById('google-btn-container').innerHTML = '<button class="btn btn-outline" onclick="promptGoogleLogin()">Connecter</button>';
+        document.getElementById('user-profile').style.display = 'none';
+        document.getElementById('logout-btn').style.display = 'none';
+        showToast("Déconnexion réussie", "success");
+        renderDynamicViews();
+    }
+
     // --- AUTH GOOGLE ---
     function promptGoogleLogin() {
         if (window.google && google.accounts && google.accounts.oauth2) {
@@ -198,24 +237,39 @@
                 client_id: "201469394700-jaqkevq3and8d743gmrjbc2lf04ebobs.apps.googleusercontent.com",
                 scope: "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send profile email",
                 callback: (response) => {
-                    if (response.access_token) { state.accessToken = response.access_token; state.connections.gmail = true; state.realEmails = []; fetchUserInfo(); }
-                    else { showToast("Erreur d'auth Google", "error"); }
+                    if (response.access_token) {
+                        state.accessToken = response.access_token;
+                        state.connections.gmail = true;
+                        state.realEmails = [];
+                        fetchUserInfo();
+                    } else { showToast("Erreur d'auth Google", "error"); }
                 }
             });
             tokenClient.requestAccessToken({ prompt: 'consent' });
         }
     }
+
     function fetchUserInfo() {
         fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { 'Authorization': 'Bearer ' + state.accessToken } })
         .then(res => res.json()).then(userData => {
             state.user = userData;
-            document.getElementById('gmail-status').innerText = `Connecté : ${userData.email}`;
+            updateUIAfterLogin();
+            saveState(); // SAUVEGARDE LA SESSION ICI
+            showToast(`Gmail connecté`, 'success');
+            renderDynamicViews();
+        }).catch(() => logout());
+    }
+
+    function updateUIAfterLogin() {
+        if(state.user) {
+            document.getElementById('gmail-status').innerText = `Connecté : ${state.user.email}`;
             document.getElementById('gmail-status').style.color = 'var(--green)';
             document.getElementById('google-btn-container').innerHTML = `<button class="btn btn-outline" style="border-color:var(--green); color:var(--green)" onclick="promptGoogleLogin()">Reconnecter</button>`;
             document.getElementById('user-profile').style.display = 'flex';
-            document.getElementById('user-pic').src = userData.picture; document.getElementById('user-name').innerText = userData.name;
-            showToast(`Gmail connecté`, 'success'); renderDynamicViews();
-        });
+            document.getElementById('user-pic').src = state.user.picture;
+            document.getElementById('user-name').innerText = state.user.name;
+            document.getElementById('logout-btn').style.display = 'flex';
+        }
     }
 
     // --- ZENDESK IA (Emails Réels) ---
@@ -223,7 +277,13 @@
         const listEl = document.getElementById('sav-email-list');
         if(listEl) listEl.innerHTML = `<div style="padding: 40px; text-align: center;"><div class="loader"></div><br><br>Extraction 30 emails...</div>`;
         fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=30', { headers: { 'Authorization': 'Bearer ' + state.accessToken } })
-        .then(res => res.ok ? res.json() : res.json().then(err => { throw new Error(err.error.message); }))
+        .then(res => {
+            if(!res.ok) {
+                if(res.status === 401) { showToast("Session Google expirée. Reconnectez-vous.", "error"); logout(); throw new Error("Token expired"); }
+                return res.json().then(err => { throw new Error(err.error.message); });
+            }
+            return res.json();
+        })
         .then(data => {
             if (!data.messages) { listEl.innerHTML = `Aucun email.`; return; }
             Promise.all(data.messages.map(msg => fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=full`, { headers: { 'Authorization': 'Bearer ' + state.accessToken } }).then(res => res.json())))
@@ -231,7 +291,7 @@
                 state.realEmails = emails.map(e => { let h = e.payload.headers; return { id: e.id, subject: h.find(x=>x.name=='Subject')?.value||"", from: h.find(x=>x.name=='From')?.value||"", body: getBody(e.payload), snippet: e.snippet }; });
                 displayRealEmails();
             });
-        }).catch(err => { listEl.innerHTML = `<div style="color: var(--red);">${err.message}</div>`; });
+        }).catch(err => { if(err.message !== "Token expired") listEl.innerHTML = `<div style="color: var(--red);">${err.message}</div>`; });
     }
     function getBody(p) { let b=""; if(p.parts) { let pt=p.parts.find(x=>x.mimeType=='text/plain')||p.parts[0]; if(pt&&pt.body&&pt.body.data) b=pt.body.data; } else if(p.body&&p.body.data) b=p.body.data; if(b) { try { return atob(b.replace(/-/g,'+').replace(/_/g,'/')).replace(/<[^>]*>/g,'').substring(0,1000); } catch(e){return "(Err)";} } return "(Vide)"; }
     function displayRealEmails() { document.getElementById('sav-email-list').innerHTML = state.realEmails.map((e,i)=>`<div class="email-item" onclick="readEmail(${i})"><div class="email-avatar">${e.from.charAt(0).toUpperCase()}</div><div style="flex:1;overflow:hidden"><div style="display:flex;justify-content:space-between"><span style="font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.from.split('<')[0]}</span><span class="badge badge-blue" id="cat-${i}">En attente</span></div><div style="font-size:13px;color:var(--text-gray);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><strong>${e.subject}</strong></div></div></div>`).join(''); }
@@ -246,9 +306,12 @@
         const encodedEmail = btoa(unescape(encodeURIComponent(rawEmail))).replace(/\+/g, '-').replace(/\//g, '_');
         showToast("Envoi...", "success");
         fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', { method: 'POST', headers: { 'Authorization': 'Bearer ' + state.accessToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ raw: encodedEmail }) })
-        .then(res => res.ok ? res.json() : res.json().then(err => { throw new Error(err.error.message); }))
+        .then(res => {
+            if(!res.ok) { if(res.status === 401) { showToast("Session expirée", "error"); logout(); throw new Error("Token expired"); } return res.json().then(err => { throw new Error(err.error.message); }); }
+            return res.json();
+        })
         .then(() => { showToast("Email envoyé !", "success"); document.getElementById('draft-response').value = ""; })
-        .catch(err => showToast("Err: " + err.message, "error"));
+        .catch(err => { if(err.message !== "Token expired") showToast("Err: " + err.message, "error"); });
     }
     function summarizeEmail() { const r=document.getElementById('ai-action-result'); r.style.display='block'; r.innerHTML=`<div class="task-item" style="border-left-color:var(--blue)">📝 ${state.currentEmail.snippet}</div>`; }
     function extractTasks() { const t=state.currentEmail.body; const r=/(il faut|pensez à|préparer|envoyer|rappeler|valider) ([^\.!?\n]{5,60})/gi; let m, tasks=[]; while((m=r.exec(t))!==null) tasks.push(m[0]); const el=document.getElementById('ai-action-result'); el.style.display='block'; el.innerHTML=tasks.length>0?tasks.map(x=>`<div class="task-item">${x}</div>`).join(''):`<div class="task-item">Aucune tâche.</div>`; }
@@ -269,7 +332,6 @@
         if(!p) return;
         document.getElementById('copy-content').innerHTML = `<div class="loader"></div> Génération Stratégique...`;
         setTimeout(() => {
-            // Algorithme d'extraction de mots-clés réels
             const words = desc.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/);
             const stopWords = ['le','la','les','un','une','de','des','et','ou','pour','avec','dans','sur','qui','que','une','est','au','en'];
             const freq = {}; words.forEach(w => { if(w.length > 3 && !stopWords.includes(w)) freq[w] = (freq[w]||0)+1; });
@@ -342,6 +404,9 @@
     let toastTimeout;
     function showToast(msg, type) { const t = document.getElementById('toast'); document.getElementById('toast-text').innerText = msg; t.className = `toast show ${type}`; clearTimeout(toastTimeout); toastTimeout = setTimeout(() => t.classList.remove('show'), 3000); }
 
+    // --- INITIAL LOAD ---
+    loadState(); // CHARGE LA SESSION SAUVEGARDÉE
+    if(state.connections.gmail) updateUIAfterLogin(); // MET À JOUR L'UI SI CONNECTÉ
     initStore(); initNavAgents(); renderDynamicViews();
 </script>
 
