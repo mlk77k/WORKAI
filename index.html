@@ -110,12 +110,6 @@
         .progress-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
         .chart-container { display: flex; align-items: flex-end; gap: 20px; height: 200px; padding-top: 20px; border-bottom: 1px solid var(--border); }
         .chart-bar { width: 80px; border-radius: 4px 4px 0 0; transition: height 0.8s cubic-bezier(0.16, 1, 0.3, 1); display: flex; align-items: flex-start; justify-content: center; color: white; font-size: 12px; font-weight: bold; padding-top: 8px; }
-        
-        /* Calendar Specific */
-        .cal-item { display: flex; gap: 16px; padding: 16px; border-bottom: 1px solid var(--surface-2); }
-        .cal-date { text-align: center; width: 50px; flex-shrink: 0; }
-        .cal-day { font-size: 24px; font-weight: 700; color: var(--text); }
-        .cal-month { font-size: 12px; color: var(--text-gray); text-transform: uppercase; }
     </style>
 </head>
 <body>
@@ -147,27 +141,27 @@
             <div class="view active" id="view-store">
                 <div class="hero-bg"></div>
                 <div class="hero">
-                    <span class="hero-badge">✦ Agentic Enterprise OS v16.0</span>
+                    <span class="hero-badge">✦ Agentic Enterprise OS v16.1</span>
                     <h2>Le Futur Centralisé du Travail</h2>
-                    <p>La plateforme SaaS #1. Intégration Gmail, Google Calendar, Drive, Sheets. OCR Tesseract.js pour les CV.</p>
+                    <p>La plateforme SaaS #1. Emails réels via Gmail, OCR Tesseract.js pour les CV, et refactoring de code en direct.</p>
                 </div>
                 <div class="app-grid" id="store-grid"></div>
             </div>
 
             <div class="view" id="view-integrations">
-                <h2 style="font-size: 24px; margin-bottom: 8px;">Connexions Google Workspace</h2>
-                <p style="color: var(--text-gray); margin-bottom: 24px;">Connectez votre compte Google pour débloquer Gmail, Calendar, Drive et Sheets automatiquement.</p>
+                <h2 style="font-size: 24px; margin-bottom: 8px;">Connexions de l'Entreprise</h2>
+                <p style="color: var(--text-gray); margin-bottom: 24px;">Connectez Gmail pour ZenDesk IA, ou importez vos fichiers locaux pour les autres agents.</p>
                 <div class="grid-2">
                     <div class="card">
-                        <div class="card-title" style="margin-bottom:16px">Compte Google</div>
+                        <div class="card-title" style="margin-bottom:16px">Communication</div>
                         <div class="int-card">
                             <div class="int-logo" style="background: white; color: #ea4335; font-size: 24px;">G</div>
-                            <div style="flex:1"><strong>Google Workspace</strong><br><span id="gmail-status" style="font-size:12px; color:var(--text-gray)">Non connecté</span></div>
-                            <div id="google-btn-container"><button class="btn btn-outline" onclick="promptGoogleLogin()">Tout connecter</button></div>
+                            <div style="flex:1"><strong>Gmail</strong><br><span id="gmail-status" style="font-size:12px; color:var(--text-gray)">Non connecté</span></div>
+                            <div id="google-btn-container"><button class="btn btn-outline" onclick="promptGoogleLogin()">Connecter</button></div>
                         </div>
                     </div>
                     <div class="card">
-                        <div class="card-title" style="margin-bottom:16px">Finance & Logistique (Local)</div>
+                        <div class="card-title" style="margin-bottom:16px">Finance & Logistique</div>
                         <div class="int-card">
                             <div class="int-logo" style="background: #635bff; color: white; font-size: 16px;">B</div>
                             <div style="flex:1"><strong>Relevé Bancaire (CSV)</strong><br><span id="bank-status" style="font-size:12px; color:var(--text-gray)">Importer</span></div>
@@ -192,9 +186,8 @@
 <div class="toast" id="toast"><span id="toast-text"></span></div>
 
 <script>
-    const state = { installedAgents: ['sav', 'compta', 'recruteur', 'copy', 'supply', 'sales', 'legal', 'dev', 'calendar'], connections: { google: false }, user: null, accessToken: null, realEmails: [], currentEmail: null };
+    const state = { installedAgents: ['sav', 'compta', 'recruteur', 'copy', 'supply', 'sales', 'legal', 'dev'], connections: { gmail: false }, user: null, accessToken: null, realEmails: [], currentEmail: null };
     const agents = [
-        { id: 'calendar', name: 'CalendarGenius IA', desc: 'Assistant Direction. Lit Google Calendar, trouve des créneaux libres et suggère des pauses.', iconPath: '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>', color: '#0070f3' },
         { id: 'sav', name: 'ZenDesk IA', desc: 'Helpdesk Dashboard. Lit Gmail, détecte l\'urgence, traduit et envoie les réponses.', iconPath: '<path d="M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-7l-4 4v-4H5a2 2 0 0 1-2-2z"/>', color: '#00d68f' },
         { id: 'compta', name: 'TaxMaster IA', desc: 'Dashboard CFO. Lit votre CSV bancaire, calcule le Burn Rate, la TVA et le Runway.', iconPath: '<path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/>', color: '#0070f3' },
         { id: 'recruteur', name: 'TalentHunter IA', desc: 'ATS & Pipeline. Importez un CV en image (OCR Tesseract), extraction du profil et taux horaire.', iconPath: '<circle cx="12" cy="7" r="4"/><path d="M5.5 21a6.5 6.5 0 0 1 13 0"/>', color: '#cb68ff' },
@@ -207,56 +200,22 @@
 
     // --- LOCAL STORAGE ---
     function saveState() { localStorage.setItem('workai_session', JSON.stringify({ accessToken: state.accessToken, user: state.user, connections: state.connections })); }
-    function loadState() { const s = localStorage.getItem('workai_session'); if(s) { try { const p = JSON.parse(s); state.accessToken = p.accessToken; state.user = p.user; state.connections = p.connections || { google: false }; } catch(e) { localStorage.removeItem('workai_session'); } } }
-    function logout() { localStorage.removeItem('workai_session'); state.accessToken = null; state.user = null; state.connections.google = false; state.realEmails = []; document.getElementById('gmail-status').innerText = 'Non connecté'; document.getElementById('gmail-status').style.color = 'var(--text-gray)'; document.getElementById('google-btn-container').innerHTML = '<button class="btn btn-outline" onclick="promptGoogleLogin()">Tout connecter</button>'; document.getElementById('user-profile').style.display = 'none'; document.getElementById('logout-btn').style.display = 'none'; showToast("Déconnexion réussie", "success"); renderDynamicViews(); }
+    function loadState() { const s = localStorage.getItem('workai_session'); if(s) { try { const p = JSON.parse(s); state.accessToken = p.accessToken; state.user = p.user; state.connections = p.connections || { gmail: false }; } catch(e) { localStorage.removeItem('workai_session'); } } }
+    function logout() { localStorage.removeItem('workai_session'); state.accessToken = null; state.user = null; state.connections.gmail = false; state.realEmails = []; document.getElementById('gmail-status').innerText = 'Non connecté'; document.getElementById('gmail-status').style.color = 'var(--text-gray)'; document.getElementById('google-btn-container').innerHTML = '<button class="btn btn-outline" onclick="promptGoogleLogin()">Connecter</button>'; document.getElementById('user-profile').style.display = 'none'; document.getElementById('logout-btn').style.display = 'none'; showToast("Déconnexion réussie", "success"); renderDynamicViews(); }
 
-    // --- AUTH GOOGLE (Scopes: Gmail, Calendar, Drive, Sheets) ---
+    // --- AUTH GOOGLE (Uniquement Gmail) ---
     function promptGoogleLogin() {
         if (window.google && google.accounts && google.accounts.oauth2) {
             const tc = google.accounts.oauth2.initTokenClient({
                 client_id: "201469394700-jaqkevq3and8d743gmrjbc2lf04ebobs.apps.googleusercontent.com",
-                scope: "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file profile email",
-                callback: (r) => { if(r.access_token) { state.accessToken = r.access_token; state.connections.google = true; state.realEmails = []; fetchUserInfo(); } else { showToast("Erreur d'auth Google", "error"); } }
+                scope: "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send profile email",
+                callback: (r) => { if(r.access_token) { state.accessToken = r.access_token; state.connections.gmail = true; state.realEmails = []; fetchUserInfo(); } else { showToast("Erreur d'auth Google", "error"); } }
             });
             tc.requestAccessToken({ prompt: 'consent' });
         }
     }
-    function fetchUserInfo() { fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { 'Authorization': 'Bearer ' + state.accessToken } }).then(r => r.json()).then(u => { state.user = u; updateUIAfterLogin(); saveState(); showToast(`Google Workspace connecté`, 'success'); renderDynamicViews(); }).catch(() => logout()); }
+    function fetchUserInfo() { fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { 'Authorization': 'Bearer ' + state.accessToken } }).then(r => r.json()).then(u => { state.user = u; updateUIAfterLogin(); saveState(); showToast(`Gmail connecté`, 'success'); renderDynamicViews(); }).catch(() => logout()); }
     function updateUIAfterLogin() { if(state.user) { document.getElementById('gmail-status').innerText = `Connecté : ${state.user.email}`; document.getElementById('gmail-status').style.color = 'var(--green)'; document.getElementById('google-btn-container').innerHTML = `<button class="btn btn-outline" style="border-color:var(--green); color:var(--green)" onclick="promptGoogleLogin()">Reconnecter</button>`; document.getElementById('user-profile').style.display = 'flex'; document.getElementById('user-pic').src = state.user.picture; document.getElementById('user-name').innerText = state.user.name; document.getElementById('logout-btn').style.display = 'flex'; } }
-
-    // --- CALENDAR GENIUS IA (Google Calendar API) ---
-    function syncCalendar() {
-        const timeMin = new Date().toISOString();
-        document.getElementById('cal-list').innerHTML = `<div style="padding: 40px; text-align: center;"><div class="loader"></div><br><br>Lecture de Google Calendar...</div>`;
-        
-        fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=10&orderBy=startTime&singleEvents=true&timeMin=${timeMin}`, {
-            headers: { 'Authorization': 'Bearer ' + state.accessToken }
-        })
-        .then(res => { if(!res.ok) { if(res.status === 401) { showToast("Session expirée", "error"); logout(); throw new Error("Token expired"); } return res.json().then(e => { throw new Error(e.error.message); }); } return res.json(); })
-        .then(data => {
-            if (!data.items || data.items.length === 0) {
-                document.getElementById('cal-list').innerHTML = `<div style="padding: 40px; color: var(--text-gray);">Aucun événement à venir.</div>`;
-                document.getElementById('cal-analysis').innerHTML = `<div class="task-item" style="border-left-color:var(--green)">✓ Votre agenda est complètement vide. Profitez-en pour avancer sur vos projets internes !</div>`;
-                return;
-            }
-            
-            let html = data.items.map(e => {
-                let date = new Date(e.start.dateTime || e.start.date);
-                let day = date.getDate();
-                let month = date.toLocaleString('fr-FR', { month: 'short' }).replace('.', '');
-                let time = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-                return `<div class="cal-item"><div class="cal-date"><div class="cal-day">${day}</div><div class="cal-month">${month}</div></div><div style="flex:1"><div style="font-weight:600; color:var(--text);">${e.summary || "(Sans titre)"}</div><div style="font-size:13px; color:var(--text-gray);">${time} - ${e.hangoutLink ? '<a href="'+e.hangoutLink+'" target="_blank" style="color:var(--blue)">Google Meet</a>' : 'Sur place'}</div></div></div>`;
-            }).join('');
-            document.getElementById('cal-list').innerHTML = html;
-
-            // AI Analysis
-            let analysis = `<div class="task-item" style="border-left-color:var(--blue)">🗓️ <strong>Analyse de la semaine:</strong> Vous avez ${data.items.length} événements programmés.</div>`;
-            if(data.items.length > 5) analysis += `<div class="task-item" style="border-left-color:var(--yellow)">⚠️ <strong>Alerte Burnout:</strong> Votre agenda est très chargé. L'IA recommande de bloquer un créneau de 2h demain pour du travail profond sans interruption.</div>`;
-            if(data.items.some(e => e.summary && e.summary.toLowerCase().includes("rendez-vous"))) analysis += `<div class="task-item" style="border-left-color:var(--purple)">🤝 <strong>Opportunité:</strong> Rendez-vous client détecté. Pensez à préparer un compte-rendu à l'avance avec ZenDesk IA.</div>`;
-            
-            document.getElementById('cal-analysis').innerHTML = analysis;
-        }).catch(err => { if(err.message !== "Token expired") document.getElementById('cal-list').innerHTML = `<div style="color: var(--red); padding:20px;">${err.message}. Activez l'API Google Calendar.</div>`; });
-    }
 
     // --- ZENDESK DASHBOARD ---
     function syncGmail() {
@@ -335,25 +294,8 @@
     // --- UI VIEWS ---
     function renderDynamicViews() {
         let html = `
-        <div class="view" id="view-calendar">
-            ${state.connections.google ? `
-            <div class="grid-2">
-                <div class="card" style="padding:0;max-height:650px;overflow-y:auto">
-                    <div style="padding:16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;background:var(--surface-2)">
-                        <div class="card-title">Agenda Google Calendar</div>
-                        <button class="btn btn-blue btn-small" onclick="syncCalendar()">Sync</button>
-                    </div>
-                    <div id="cal-list" style="font-size:13px;text-align:center;padding:40px">Cliquez sur Sync pour charger votre agenda réel.</div>
-                </div>
-                <div class="card" style="min-height:650px">
-                    <div class="card-header"><div class="card-title">Analyse & Recommandations IA</div></div>
-                    <div id="cal-analysis" style="text-align:center;padding:60px;color:var(--text-dark)">L'IA analysera votre charge de travail ici.</div>
-                </div>
-            </div>` : `<div class="card" style="text-align:center;padding:60px"><h2>Google Requis</h2><button class="btn btn-blue" style="margin-top:16px" onclick="switchView('integrations', document.querySelectorAll('.nav-item')[1])">Aller aux Connexions</button></div>`}
-        </div>`;
-
-        html += `<div class="view" id="view-sav">
-            ${state.connections.google ? `
+        <div class="view" id="view-sav">
+            ${state.connections.gmail ? `
             <div class="grid-3">
                 <div class="card"><div class="stat-label">Tickets Récents</div><div class="stat-value" id="kpi-tickets">0</div></div>
                 <div class="card"><div class="stat-label">Urgents Détectés</div><div class="stat-value" style="color:var(--red)" id="kpi-urgent">0</div></div>
@@ -362,7 +304,7 @@
             <div class="grid-2">
                 <div class="card" style="padding:0;max-height:600px;overflow-y:auto"><div style="padding:16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;background:var(--surface-2)"><div class="card-title">Inbox Gmail</div><button class="btn btn-blue btn-small" onclick="syncGmail()">Sync</button></div><div id="sav-email-list" style="font-size:13px;text-align:center;padding:40px">Cliquez sur Sync.</div></div>
                 <div class="card" style="min-height:600px"><div class="card-header"><div class="card-title">Détails & Actions IA</div></div><div id="sav-content" style="text-align:center;padding:60px;color:var(--text-dark)">Sélectionnez un email...</div></div>
-            </div>` : `<div class="card" style="text-align:center;padding:60px"><h2>Google Requis</h2><button class="btn btn-blue" style="margin-top:16px" onclick="switchView('integrations', document.querySelectorAll('.nav-item')[1])">Aller aux Connexions</button></div>`}
+            </div>` : `<div class="card" style="text-align:center;padding:60px"><h2>Gmail Requis</h2><button class="btn btn-blue" style="margin-top:16px" onclick="switchView('integrations', document.querySelectorAll('.nav-item')[1])">Aller aux Connexions</button></div>`}
         </div>`;
 
         html += `<div class="view" id="view-compta"><div class="grid-4"><div class="card"><div class="stat-label">Revenus</div><div class="stat-value" style="color:var(--green)" id="kpi-rev">0€</div></div><div class="card"><div class="stat-label">Dépenses</div><div class="stat-value" style="color:var(--red)" id="kpi-exp">0€</div></div><div class="card"><div class="stat-label">TVA Net</div><div class="stat-value" id="kpi-tva">0€</div></div><div class="card"><div class="stat-label">Runway</div><div class="stat-value" id="kpi-runway">0x</div></div></div><div class="grid-2"><div class="card"><div class="card-header"><div class="card-title">Flux de Trésorerie</div></div><div id="compta-chart" style="color:var(--text-dark);text-align:center;padding-top:80px">Importez un CSV.</div></div><div class="card"><div class="card-header"><div class="card-title">Transactions</div></div><div id="compta-table" style="text-align:center;color:var(--text-gray);padding:20px;max-height:300px;overflow-y:auto">Importez votre CSV.</div></div></div></div>`;
@@ -374,20 +316,17 @@
         html += `<div class="view" id="view-dev"><div class="grid-2"><div class="card"><div class="card-header"><div class="card-title">Code</div></div><textarea id="dev-input" style="min-height:300px" placeholder="Code..."></textarea><button class="btn btn-blue" style="margin-top:12px;width:100%" onclick="runDev()">Audit</button></div><div class="card" style="min-height:400px"><div class="card-header"><div class="card-title">Correction</div></div><div id="dev-content" style="text-align:center;padding:60px;color:var(--text-dark)">Résultat...</div></div></div></div>`;
 
         document.getElementById('dynamic-views').innerHTML = html;
-        if(state.connections.google) {
-            if(document.getElementById('view-calendar').classList.contains('active')) syncCalendar();
-            if(document.getElementById('view-sav').classList.contains('active')) { if(state.realEmails.length === 0) syncGmail(); else displayRealEmails(); }
-        }
+        if(state.connections.gmail && document.getElementById('view-sav').classList.contains('active')) { if(state.realEmails.length === 0) syncGmail(); else displayRealEmails(); }
     }
 
-    function initStore() { document.getElementById('store-grid').innerHTML = agents.map(a => `<div class="app-card"><div class="app-icon-large" style="background:rgba(255,255,255,0.05);border:1px solid ${a.color}33"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${a.color}" stroke-width="2">${a.iconPath}</svg></div><h3>${a.name}</h3><p>${a.desc}</p><div style="margin-bottom:8px"><span class="badge badge-blue">v16.0</span></div><div class="installed-badge">✓ Installé</div></div>`).join(''); }
+    function initStore() { document.getElementById('store-grid').innerHTML = agents.map(a => `<div class="app-card"><div class="app-icon-large" style="background:rgba(255,255,255,0.05);border:1px solid ${a.color}33"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${a.color}" stroke-width="2">${a.iconPath}</svg></div><h3>${a.name}</h3><p>${a.desc}</p><div style="margin-bottom:8px"><span class="badge badge-blue">v16.1</span></div><div class="installed-badge">✓ Installé</div></div>`).join(''); }
     function initNavAgents() { document.getElementById('nav-agents-container').innerHTML = state.installedAgents.map(id => { const a = agents.find(ag => ag.id === id); return `<div class="nav-item" onclick="switchView('${id}', this)"><svg viewBox="0 0 24 24">${a.iconPath}</svg> ${a.name}</div>`; }).join(''); }
-    function switchView(v, el) { document.querySelectorAll('.view').forEach(x => x.classList.remove('active')); document.getElementById('view-' + v).classList.add('active'); document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active')); if(el) el.classList.add('active'); document.getElementById('page-title').innerText = v === 'store' ? 'App Store' : v === 'integrations' ? 'Connexions' : agents.find(a => a.id == v).name; document.querySelector('.content').scrollTop = 0; if(state.connections.google) { if(v == 'calendar') syncCalendar(); if(v == 'sav') { if(state.realEmails.length === 0) syncGmail(); else displayRealEmails(); } } }
+    function switchView(v, el) { document.querySelectorAll('.view').forEach(x => x.classList.remove('active')); document.getElementById('view-' + v).classList.add('active'); document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active')); if(el) el.classList.add('active'); document.getElementById('page-title').innerText = v === 'store' ? 'App Store' : v === 'integrations' ? 'Connexions' : agents.find(a => a.id == v).name; document.querySelector('.content').scrollTop = 0; if(v == 'sav' && state.connections.gmail) { if(state.realEmails.length === 0) syncGmail(); else displayRealEmails(); } }
     let toastTimeout;
     function showToast(msg, type) { const t = document.getElementById('toast'); document.getElementById('toast-text').innerText = msg; t.className = `toast show ${type}`; clearTimeout(toastTimeout); toastTimeout = setTimeout(() => t.classList.remove('show'), 3000); }
 
     loadState(); 
-    if(state.connections.google) updateUIAfterLogin(); 
+    if(state.connections.gmail) updateUIAfterLogin(); 
     initStore(); initNavAgents(); renderDynamicViews();
 </script>
 
