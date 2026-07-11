@@ -39,7 +39,6 @@
         .btn-outline { background: transparent; color: var(--text); border-color: var(--border); }
         .btn-outline:hover { border-color: var(--border-hover); background: var(--surface-2); }
         .btn-blue { background: var(--blue); border-color: var(--blue); color: white; box-shadow: 0 0 15px rgba(0,112,243,0.2); }
-        .btn-red { background: var(--red); border-color: var(--red); color: white; }
 
         .content { flex: 1; overflow-y: auto; scroll-behavior: smooth; }
         .view { display: none; padding: 32px; max-width: 1280px; margin: 0 auto; animation: fadeIn 0.4s ease; }
@@ -63,9 +62,12 @@
         .installed-badge { width: 100%; margin-top: 8px; padding: 6px; border-radius: 6px; border: 1px solid var(--green); background: rgba(0,214,143,0.1); color: var(--green); font-weight: 600; font-size: 12px; text-align: center; }
 
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
         .card { background: var(--surface); backdrop-filter: blur(10px); border: 1px solid var(--border); border-radius: 12px; padding: 24px; transition: border-color 0.2s; }
         .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .card-title { font-size: 13px; font-weight: 600; color: var(--text-gray); text-transform: uppercase; letter-spacing: 1px; }
+        .stat-label { color: var(--text-gray); font-size: 13px; margin-bottom: 8px; }
+        .stat-value { font-size: 28px; font-weight: 600; font-family: var(--font-mono); letter-spacing: -1px; }
 
         textarea, input { width: 100%; background: var(--surface-2); border: 1px solid var(--border); padding: 12px; border-radius: 6px; color: var(--text); font-family: var(--font-mono); font-size: 13px; outline: none; }
         textarea:focus, input:focus { border-color: var(--blue); }
@@ -95,6 +97,8 @@
         .feature-btn:hover { border-color: var(--blue); color: var(--blue); }
         
         .task-item { padding: 8px; background: var(--surface-2); border-left: 3px solid var(--purple); margin-bottom: 8px; font-size: 13px; color: var(--text); }
+        .file-drop { border: 1px dashed var(--border); padding: 48px 24px; text-align: center; border-radius: 12px; cursor: pointer; transition: 0.2s; background: var(--surface-2); }
+        .file-drop:hover { border-color: var(--blue); background: rgba(0,112,243,0.03); }
     </style>
 </head>
 <body>
@@ -126,9 +130,9 @@
             <div class="view active" id="view-store">
                 <div class="hero-bg"></div>
                 <div class="hero">
-                    <span class="hero-badge">✦ Agentic Enterprise OS v10.0</span>
+                    <span class="hero-badge">✦ Agentic Enterprise OS v11.0</span>
                     <h2>Le Futur Centralisé du Travail</h2>
-                    <p>La plus grande plateforme d'agents IA au monde. Connectez vos vrais comptes et déléguez le travail de toute votre entreprise.</p>
+                    <p>La plateforme d'agents IA 100% réelle. OCR de CV, envoi d'emails Gmail, lecture de relevés bancaires et audits de code en direct.</p>
                 </div>
                 <div class="app-grid" id="store-grid"></div>
             </div>
@@ -151,8 +155,9 @@
                         <div class="card-title" style="margin-bottom:16px">Finance & Banque</div>
                         <div class="int-card">
                             <div class="int-logo" style="background: #635bff; color: white; font-size: 16px;">S</div>
-                            <div style="flex:1"><strong>Stripe</strong><br><span id="stripe-status" style="font-size:12px; color:var(--text-gray)">Non connecté</span></div>
-                            <button class="btn btn-outline" id="stripe-btn" onclick="simulateConnection('stripe')">Simuler</button>
+                            <div style="flex:1"><strong>Relevé Bancaire (CSV)</strong><br><span id="bank-status" style="font-size:12px; color:var(--text-gray)">Importez votre fichier CSV</span></div>
+                            <button class="btn btn-outline" id="bank-btn" onclick="document.getElementById('csv-file-bank').click()">Importer</button>
+                            <input type="file" id="csv-file-bank" accept=".csv" style="display:none" onchange="runCompta(event)">
                         </div>
                     </div>
                 </div>
@@ -166,16 +171,16 @@
 <div class="toast" id="toast"><span id="toast-text"></span></div>
 
 <script>
-    const state = { installedAgents: ['sav', 'compta'], connections: { gmail: false, stripe: false }, user: null, accessToken: null, realEmails: [], currentEmail: null };
+    const state = { installedAgents: ['sav', 'compta', 'recruteur', 'dev', 'legal', 'sales', 'copy', 'supply'], connections: { gmail: false }, user: null, accessToken: null, realEmails: [], currentEmail: null, comptaData: { rev: 0, exp: 0 } };
     const agents = [
-        { id: 'sav', name: 'ZenDesk IA', desc: 'Manager Support. Lit 30 emails Gmail, extrait les tâches, traduit et envoie les réponses réelles.', iconPath: '<path d="M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-7l-4 4v-4H5a2 2 0 0 1-2-2z"/>', color: '#00d68f' },
-        { id: 'compta', name: 'TaxMaster IA', desc: 'CFO Stratégique. Synchronise Stripe, calcule le Runway, TVA et conseille.', iconPath: '<path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/>', color: '#0070f3' },
-        { id: 'recruteur', name: 'TalentHunter IA', desc: 'DRH Expert. Analyse les CV, infère le psychisme, estime le salaire et pose les questions.', iconPath: '<circle cx="12" cy="7" r="4"/><path d="M5.5 21a6.5 6.5 0 0 1 13 0"/>', color: '#cb68ff' },
-        { id: 'copy', name: 'CopyWriter IA', desc: 'Directeur Marketing. Génère des copies multi-canaux, Ads et extraits SEO.', iconPath: '<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>', color: '#ffb800' },
-        { id: 'dev', name: 'CodeReviewer IA', desc: 'Tech Lead. Scanne le code, détecte les failles de sécurité et optimise la performance.', iconPath: '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>', color: '#ff4d4d' },
-        { id: 'legal', name: 'LegalEagle IA', desc: 'Juriste d\'Entreprise. Détecte les clauses abusives et évalue les risques légaux des contrats.', iconPath: '<path d="M3 6l3 0m0 0v12m6-12l3 0m0 0v12m6-12h3v12M3 18h18"/>', color: '#ffffff' },
-        { id: 'sales', name: 'SalesPredict IA', desc: 'Directeur Commercial. Analyse les leads, prédit la probabilité de closing et le budget.', iconPath: '<path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 6-6"/>', color: '#00d68f' },
-        { id: 'supply', name: 'SupplyChain IA', desc: 'Logistique & Ops. Optimise les stocks, prédit les ruptures et calcule les réapprovisionnements.', iconPath: '<path d="M16.5 9.5L21 14l-4.5 4.5M3 14h18M7 9.5L2.5 14 7 18.5"/>', color: '#0070f3' }
+        { id: 'sav', name: 'ZenDesk IA', desc: 'Lit 30 emails Gmail, extrait les tâches, traduit et envoie les réponses réelles.', iconPath: '<path d="M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-7l-4 4v-4H5a2 2 0 0 1-2-2z"/>', color: '#00d68f' },
+        { id: 'compta', name: 'TaxMaster IA', desc: 'Lit votre vrai CSV bancaire, calcule le Runway, la TVA et génère un dashboard.', iconPath: '<path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/>', color: '#0070f3' },
+        { id: 'recruteur', name: 'TalentHunter IA', desc: 'Importez une IMAGE de CV. L\'IA fait de la lecture OCR et analyse le profil réel.', iconPath: '<circle cx="12" cy="7" r="4"/><path d="M5.5 21a6.5 6.5 0 0 1 13 0"/>', color: '#cb68ff' },
+        { id: 'dev', name: 'CodeReviewer IA', desc: 'Scanne le code, détecte les failles XSS, eval() et optimise la performance.', iconPath: '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>', color: '#ff4d4d' },
+        { id: 'legal', name: 'LegalEagle IA', desc: 'Détecte les clauses abusives, pénalités cachées et risques légaux des contrats.', iconPath: '<path d="M3 6l3 0m0 0v12m6-12l3 0m0 0v12m6-12h3v12M3 18h18"/>', color: '#ffffff' },
+        { id: 'sales', name: 'SalesPredict IA', desc: 'Analyse les leads selon la méthode BANT et prédit la probabilité de closing.', iconPath: '<path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 6-6"/>', color: '#00d68f' },
+        { id: 'copy', name: 'CopyWriter IA', desc: 'Génère des copies publicitaires Facebook Ads, SEO et Emailing en direct.', iconPath: '<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>', color: '#ffb800' },
+        { id: 'supply', name: 'SupplyChain IA', desc: 'Calcule le temps de rupture de stock et le point de réapprovisionnement optimal.', iconPath: '<path d="M16.5 9.5L21 14l-4.5 4.5M3 14h18M7 9.5L2.5 14 7 18.5"/>', color: '#0070f3' }
     ];
 
     // --- AUTH GOOGLE (Read & Send) ---
@@ -219,28 +224,15 @@
         });
     }
 
-    // --- GMAIL API REAL FUNCTIONS ---
+    // --- 1. ZENDESK IA (Gmail Real API) ---
     function syncGmail() {
         const listEl = document.getElementById('sav-email-list');
         if(listEl) listEl.innerHTML = `<div style="padding: 40px; text-align: center;"><div class="loader"></div><br><br>Extraction des 30 derniers emails...</div>`;
-        
-        fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=30', {
-            headers: { 'Authorization': 'Bearer ' + state.accessToken }
-        })
-        .then(res => {
-            if(!res.ok) return res.json().then(err => { throw new Error(err.error.message); });
-            return res.json();
-        })
+        fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=30', { headers: { 'Authorization': 'Bearer ' + state.accessToken } })
+        .then(res => res.ok ? res.json() : res.json().then(err => { throw new Error(err.error.message); }))
         .then(data => {
-            if (!data.messages || data.messages.length === 0) {
-                if(listEl) listEl.innerHTML = `<div style="padding: 40px; color: var(--text-gray);">Aucun email trouvé.</div>`;
-                return;
-            }
-            let promises = data.messages.map(msg => 
-                fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=full`, {
-                    headers: { 'Authorization': 'Bearer ' + state.accessToken }
-                }).then(res => res.json())
-            );
+            if (!data.messages || data.messages.length === 0) { listEl.innerHTML = `Aucun email.`; return; }
+            let promises = data.messages.map(msg => fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=full`, { headers: { 'Authorization': 'Bearer ' + state.accessToken } }).then(res => res.json()));
             Promise.all(promises).then(emails => {
                 state.realEmails = emails.map(e => {
                     let headers = e.payload.headers;
@@ -251,33 +243,19 @@
                 });
                 displayRealEmails();
             });
-        })
-        .catch(err => {
-            if(listEl) listEl.innerHTML = `<div style="padding: 20px; color: var(--red); font-size: 13px; text-align: left;"><strong>Erreur :</strong> ${err.message}<br><em>Assurez-vous d'avoir autorisé l'envoi d'emails lors de la connexion.</em></div>`;
-            showToast("Erreur de synchronisation", "error");
-        });
+        }).catch(err => { listEl.innerHTML = `<div style="color: var(--red);">${err.message}</div>`; });
     }
 
     function getBody(payload) {
         let body = "";
-        if (payload.parts) {
-            let part = payload.parts.find(p => p.mimeType === 'text/plain');
-            if (!part) part = payload.parts[0];
-            if (part && part.body && part.body.data) body = part.body.data;
-        } else if (payload.body && payload.body.data) {
-            body = payload.body.data;
-        }
-        if (body) {
-            try {
-                let decoded = atob(body.replace(/-/g, '+').replace(/_/g, '/'));
-                return decoded.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').substring(0, 1000);
-            } catch(e) { return "(Contenu illisible)"; }
-        }
+        if (payload.parts) { let part = payload.parts.find(p => p.mimeType === 'text/plain') || payload.parts[0]; if (part && part.body && part.body.data) body = part.body.data; }
+        else if (payload.body && payload.body.data) body = payload.body.data;
+        if (body) { try { return atob(body.replace(/-/g, '+').replace(/_/g, '/')).replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').substring(0, 1000); } catch(e) { return "(Illisible)"; } }
         return "(Contenu complexe)";
     }
 
     function displayRealEmails() {
-        const listHtml = state.realEmails.map((e, i) => `
+        document.getElementById('sav-email-list').innerHTML = state.realEmails.map((e, i) => `
             <div class="email-item" onclick="readEmail(${i})">
                 <div class="email-avatar">${e.from.charAt(0).toUpperCase()}</div>
                 <div style="flex:1; overflow:hidden">
@@ -287,131 +265,199 @@
                     </div>
                     <div style="font-size: 13px; color: var(--text-gray); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><strong>${e.subject}</strong></div>
                 </div>
-            </div>
-        `).join('');
-        document.getElementById('sav-email-list').innerHTML = listHtml;
+            </div>`).join('');
     }
 
     function readEmail(index) {
-        const email = state.realEmails[index];
-        state.currentEmail = email; // Save context for tools
+        const email = state.realEmails[index]; state.currentEmail = email;
         const c = document.getElementById('sav-content');
-        
         let category = "Information", catColor = "badge-blue";
         if(email.subject.toLowerCase().includes("facture") || email.from.toLowerCase().includes("billing")) { category = "Facture"; catColor = "badge-yellow"; }
         else if(email.subject.toLowerCase().includes("bug") || email.subject.toLowerCase().includes("erreur")) { category = "Support Tech"; catColor = "badge-red"; }
         else if(email.from.toLowerCase().includes("no-reply") || email.from.toLowerCase().includes("newsletter")) { category = "Promo / Auto"; catColor = "badge-purple"; }
-        document.getElementById('cat-' + index).innerText = category;
-        document.getElementById('cat-' + index).className = `badge ${catColor}`;
-
-        let urgency = "Basse", urgC="badge-green", sent="Neutre";
-        if(/urgent|furax|colère|immédiat|asap/i.test(email.body + email.subject)) { urgency = "Haute"; urgC="badge-red"; sent="En colère"; }
-
-        let draft = `Bonjour,\n\nNous avons bien reçu votre message concernant "${email.subject}". Notre équipe traite votre demande avec la plus haute priorité.\n\nCordialement,\nZenDesk IA`;
-
+        document.getElementById('cat-' + index).innerText = category; document.getElementById('cat-' + index).className = `badge ${catColor}`;
+        let urgency = "Basse", urgC="badge-green";
+        if(/urgent|furax|colère|immédiat|asap/i.test(email.body + email.subject)) { urgency = "Haute"; urgC="badge-red"; }
         c.innerHTML = `
             <div style="margin-bottom: 16px;">
                 <div style="font-size:12px; color:var(--text-gray); margin-bottom:4px;">FROM: ${email.from}</div>
                 <h3 style="font-size:16px; margin-bottom:16px;">${email.subject}</h3>
-                <div style="background:var(--surface-2); padding:12px; border-radius:6px; margin-bottom:16px; color:var(--text-gray); font-size:13px; max-height: 200px; overflow-y: auto;" id="email-body-text">${email.body}</div>
+                <div style="background:var(--surface-2); padding:12px; border-radius:6px; margin-bottom:16px; color:var(--text-gray); font-size:13px; max-height: 200px; overflow-y: auto;">${email.body}</div>
             </div>
-            <div style="display:flex; gap: 8px; margin-bottom: 24px;">
-                <span class="badge badge-blue">Catégorie: ${category}</span>
-                <span class="badge ${urgC}">Urgence: ${urgency}</span>
-                <span class="badge badge-purple">Sentiment: ${sent}</span>
-            </div>
-            
+            <div style="display:flex; gap: 8px; margin-bottom: 24px;"><span class="badge badge-blue">${category}</span><span class="badge ${urgC}">Urgence: ${urgency}</span></div>
             <div style="margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 16px;">
-                <div class="card-title" style="margin-bottom: 12px;">Outils de l'IA (Fonctionnels)</div>
-                <button class="feature-btn" onclick="generateReply()">✍️ Générer</button>
                 <button class="feature-btn" onclick="summarizeEmail()">📝 Résumer</button>
                 <button class="feature-btn" onclick="translateEmail()">🌍 Traduire</button>
                 <button class="feature-btn" onclick="extractTasks()">✔️ Extraire Tâches</button>
                 <div id="ai-action-result" style="margin-top: 16px; display: none;"></div>
             </div>
-
-            <label style="font-size:12px; color:var(--text-gray);">RÉPONSE GÉNÉRÉE PAR L'IA</label>
-            <textarea id="draft-response" style="min-height: 100px; color:var(--green); background:#030303; margin-top: 8px;">${draft}</textarea>
-            <div style="display:flex; gap: 8px; margin-top: 12px;">
-                <button class="btn btn-blue" style="flex:1" onclick="sendRealEmail()">Envoyer pour de vrai</button>
-            </div>
-        `;
+            <textarea id="draft-response" style="min-height: 100px; color:var(--green); background:#030303; margin-top: 8px;">Bonjour,\n\nNous avons bien reçu votre message. Notre équipe traite votre demande.\n\nCordialement,\nZenDesk IA</textarea>
+            <button class="btn btn-blue" style="width:100%; margin-top: 12px;" onclick="sendRealEmail()">Envoyer pour de vrai</button>`;
     }
 
-    // --- REAL AI TOOLS LOGIC ---
     function sendRealEmail() {
         const to = state.currentEmail.from.match(/<([^>]+)>/)?.[1] || state.currentEmail.from;
         const subject = "Re: " + state.currentEmail.subject;
         const body = document.getElementById('draft-response').value;
-        
         const rawEmail = `To: ${to}\r\nSubject: ${subject}\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n${body}`;
         const encodedEmail = btoa(unescape(encodeURIComponent(rawEmail))).replace(/\+/g, '-').replace(/\//g, '_');
-        
-        showToast("Envoi de l'email en cours...", "success");
-        fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
-            method: 'POST',
-            headers: { 'Authorization': 'Bearer ' + state.accessToken, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ raw: encodedEmail })
-        })
-        .then(res => {
-            if(!res.ok) return res.json().then(err => { throw new Error(err.error.message); });
-            return res.json();
-        })
-        .then(data => {
-            showToast("Email envoyé avec succès !", "success");
-            document.getElementById('draft-response').value = "";
-        })
-        .catch(err => {
-            showToast("Erreur d'envoi: " + err.message, "error");
-        });
+        showToast("Envoi de l'email...", "success");
+        fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', { method: 'POST', headers: { 'Authorization': 'Bearer ' + state.accessToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ raw: encodedEmail }) })
+        .then(res => res.ok ? res.json() : res.json().then(err => { throw new Error(err.error.message); }))
+        .then(() => { showToast("Email envoyé avec succès !", "success"); document.getElementById('draft-response').value = ""; })
+        .catch(err => showToast("Erreur: " + err.message, "error"));
     }
 
     function summarizeEmail() {
-        const text = state.currentEmail.snippet;
-        const resEl = document.getElementById('ai-action-result');
-        resEl.style.display = 'block';
-        resEl.innerHTML = `<div class="task-item" style="border-left-color: var(--blue);">📝 <strong>Résumé:</strong> ${text}</div>`;
+        const resEl = document.getElementById('ai-action-result'); resEl.style.display = 'block';
+        resEl.innerHTML = `<div class="task-item" style="border-left-color: var(--blue);">📝 <strong>Résumé:</strong> ${state.currentEmail.snippet}</div>`;
     }
-
     function extractTasks() {
         const text = state.currentEmail.body;
-        const taskRegex = /(il faut|pensez à|n'oubliez pas|préparer|envoyer|rappeler|terminer|valider|mettre à jour) ([^\.!?\n]{5,60})/gi;
-        let tasks = [];
-        let match;
-        while ((match = taskRegex.exec(text)) !== null) {
-            tasks.push(match[0].charAt(0).toUpperCase() + match[0].slice(1) + ".");
-        }
-        const resEl = document.getElementById('ai-action-result');
-        resEl.style.display = 'block';
-        if(tasks.length > 0) {
-            resEl.innerHTML = `<div class="card-title" style="margin-bottom: 12px;">Tâches extraites vers votre ToDo</div>${tasks.map(t => `<div class="task-item">${t}</div>`).join('')}`;
-        } else {
-            resEl.innerHTML = `<div class="task-item">Aucune tâche explicite détectée dans le texte.</div>`;
-        }
+        const taskRegex = /(il faut|pensez à|n'oubliez pas|préparer|envoyer|rappeler|terminer|valider) ([^\.!?\n]{5,60})/gi;
+        let tasks = []; let match;
+        while ((match = taskRegex.exec(text)) !== null) tasks.push(match[0].charAt(0).toUpperCase() + match[0].slice(1) + ".");
+        const resEl = document.getElementById('ai-action-result'); resEl.style.display = 'block';
+        resEl.innerHTML = tasks.length > 0 ? tasks.map(t => `<div class="task-item">${t}</div>`).join('') : `<div class="task-item">Aucune tâche détectée.</div>`;
     }
-
     function translateEmail() {
         const text = state.currentEmail.body.substring(0, 500);
-        const resEl = document.getElementById('ai-action-result');
-        resEl.style.display = 'block';
-        resEl.innerHTML = `<div class="task-item" style="border-left-color: var(--yellow);"><div class="loader"></div> Traduction en anglais...</div>`;
-        
-        // VRAIE API DE TRADUCTION
-        fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=fr|en`)
-            .then(res => res.json())
-            .then(data => {
-                if(data.responseData) {
-                    resEl.innerHTML = `<div class="task-item" style="border-left-color: var(--yellow);">🌍 <strong>Traduction EN:</strong> ${data.responseData.translatedText}</div>`;
+        const resEl = document.getElementById('ai-action-result'); resEl.style.display = 'block';
+        resEl.innerHTML = `<div class="task-item" style="border-left-color: var(--yellow);"><div class="loader"></div> Traduction...</div>`;
+        fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=fr|en`).then(res => res.json()).then(data => {
+            if(data.responseData) resEl.innerHTML = `<div class="task-item" style="border-left-color: var(--yellow);">🌍 <strong>EN:</strong> ${data.responseData.translatedText}</div>`;
+        });
+    }
+
+    // --- 2. TAXMASTER IA (Real CSV Bank Import) ---
+    function runCompta(event) {
+        const file = event.target.files[0]; if(!file) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+            const lines = e.target.result.split('\n').filter(l => l.trim() !== '');
+            let tRev = 0, tExp = 0, rows = '', tTVA = 0;
+            // Essai de parseur générique (Date;Description;Montant)
+            for(let i = 1; i < lines.length; i++) {
+                const cols = lines[i].split(/;|,/); 
+                if(cols.length >= 3) {
+                    let amountStr = cols[cols.length - 1].replace(/\s/g, '').replace(',', '.').replace(/[^\d.-]/g, '');
+                    let amount = parseFloat(amountStr);
+                    if(!isNaN(amount)) {
+                        if(amount > 0) { tRev += amount; tTVA += amount * 0.2; }
+                        else { tExp += Math.abs(amount); tTVA -= Math.abs(amount) * 0.2; }
+                        rows += `<tr><td>${cols[0]}</td><td>${cols[1]}</td><td style="color:${amount>0?'var(--green)':'var(--red)'}">${amount.toFixed(2)}€</td></tr>`;
+                    }
                 }
-            })
-            .catch(err => resEl.innerHTML = `<div class="task-item" style="border-left-color: var(--red);">Erreur de traduction.</div>`);
+            }
+            state.comptaData.rev = tRev; state.comptaData.exp = tExp;
+            document.getElementById('bank-status').innerText = 'Analyse terminée'; document.getElementById('bank-status').style.color = 'var(--green)';
+            document.getElementById('kpi-rev').innerText = tRev.toLocaleString('fr-FR') + '€';
+            document.getElementById('kpi-exp').innerText = tExp.toLocaleString('fr-FR') + '€';
+            document.getElementById('kpi-tva').innerText = Math.abs(tTVA).toLocaleString('fr-FR') + '€';
+            document.getElementById('kpi-runway').innerText = tExp > 0 ? (tRev / tExp).toFixed(1) + 'x' : '∞';
+            document.getElementById('compta-table').innerHTML = `<table><tr><th>Date</th><th>Description</th><th>Montant</th></tr>${rows}</table>`;
+            showToast("Relevé bancaire analysé", "success");
+        };
+        reader.readAsText(file);
     }
 
-    function generateReply() {
-        showToast("Réponse régénérée par l'IA", "success");
+    // --- 3. TALENTHUNTER IA (Real CV Image OCR) ---
+    function runRecruteurImage(event) {
+        const file = event.target.files[0]; if(!file) return;
+        const formData = new FormData();
+        formData.append('file', file); formData.append('apikey', 'helloworld'); formData.append('language', 'fre');
+        document.getElementById('recruteur-content').innerHTML = `<div class="loader"></div> Lecture OCR du CV en cours...`;
+        fetch('https://api.ocr.space/parse/image', { method: 'POST', body: formData })
+        .then(res => res.json())
+        .then(data => {
+            if(data && data.ParsedResults && data.ParsedResults.length > 0) {
+                const text = data.ParsedResults[0].ParsedText;
+                processCV(text);
+            } else { document.getElementById('recruteur-content').innerHTML = "Erreur OCR. Essayez un CV plus clair."; }
+        }).catch(() => document.getElementById('recruteur-content').innerHTML = "Erreur réseau OCR.");
+    }
+    function processCV(text) {
+        let e = text.match(/[\w.+-]+@[\w-]+\.[\w.-]+/); let ex = text.match(/(\d+)\s*an/);
+        let hS = ["React","Node","Python","SQL","Docker","AWS","Java","Management","Marketing","Figma","PHP","JavaScript"].filter(s => text.toLowerCase().includes(s.toLowerCase()));
+        let y = ex ? parseInt(ex[1]) : 0; let score = Math.min(100, (hS.length * 10) + (y * 5) + 30); let sal = (y * 5000) + (hS.length * 2000) + 30000;
+        document.getElementById('recruteur-content').innerHTML = `
+            <div style="text-align: center; margin-bottom: 20px;"><div style="font-size: 36px; font-weight: 700; color: var(--green);">${score}%</div><div style="font-size: 12px; color: var(--text-gray);">MATCH SCORE</div></div>
+            <div class="task-item" style="border-left-color: var(--blue)"><strong>Email:</strong> ${e ? e[0] : 'Non trouvé'}</div>
+            <div class="task-item" style="border-left-color: var(--purple)"><strong>Compétences:</strong> ${hS.join(', ') || 'Aucune détectée'}</div>
+            <div class="task-item" style="border-left-color: var(--yellow)"><strong>Exp. Détectée:</strong> ${y} ans</div>
+            <div class="task-item" style="border-left-color: var(--green)"><strong>Est. Salaire:</strong> ${sal.toLocaleString('fr-FR')}€</div>
+            <div style="margin-top: 16px; font-size: 12px; color: var(--text-gray);">TEXTE EXTRAIT:</div>
+            <textarea style="margin-top: 8px; min-height: 100px; font-size: 11px;" readonly>${text.substring(0, 500)}</textarea>`;
     }
 
-    // --- GENERIC AI AGENT VIEWS ---
+    // --- 4. CODEREVIEWER IA (Real Regex) ---
+    function runDev() {
+        const c = document.getElementById('dev-input').value; if(!c) return;
+        document.getElementById('dev-content').innerHTML = `<div class="loader"></div> Scan...`;
+        setTimeout(() => {
+            let iss = "";
+            if(c.includes("var ")) iss += `<div class="task-item" style="border-left-color: var(--yellow)"><strong style="color:var(--yellow)">⚠️ Warning:</strong> Utilisation de 'var'.</div>`;
+            if(c.includes("eval(")) iss += `<div class="task-item" style="border-left-color: var(--red)"><strong style="color:var(--red)">🔴 Critical:</strong> 'eval()' détecté. Faille de sécurité.</div>`;
+            if(c.includes("innerHTML")) iss += `<div class="task-item" style="border-left-color: var(--red)"><strong style="color:var(--red)">🔴 XSS:</strong> 'innerHTML' sans sanitization.</div>`;
+            if(!iss) iss = `<div class="task-item" style="border-left-color: var(--green)"><strong style="color:var(--green)">✓ Parfait:</strong> Aucun bug détecté.</div>`;
+            document.getElementById('dev-content').innerHTML = iss;
+        }, 1000);
+    }
+
+    // --- 5. LEGALEAGLE IA (Real Regex) ---
+    function runLegal() {
+        const c = document.getElementById('legal-input').value; if(!c) return;
+        document.getElementById('legal-content').innerHTML = `<div class="loader"></div> Scan...`;
+        setTimeout(() => {
+            let iss = "";
+            if(/pénalité|sans préavis|irrévocable/i.test(c)) iss += `<div class="task-item" style="border-left-color: var(--red)"><strong style="color:var(--red)">🔴 Clause Abusive:</strong> Pénalité ou sans préavis détecté.</div>`;
+            if(/non-responsabilité|déclinons toute/i.test(c)) iss += `<div class="task-item" style="border-left-color: var(--yellow)"><strong style="color:var(--yellow)">⚠️ Risque:</strong> Clause d'exonération de responsabilité.</div>`;
+            if(!iss) iss = `<div class="task-item" style="border-left-color: var(--green)"><strong style="color:var(--green)">✓ Conforme:</strong> Aucun risque détecté.</div>`;
+            document.getElementById('legal-content').innerHTML = iss;
+        }, 1000);
+    }
+
+    // --- 6. SALESPREDICT IA (Real BANT Algorithm) ---
+    function runSales() {
+        const c = document.getElementById('sales-input').value; if(!c) return;
+        document.getElementById('sales-content').innerHTML = `<div class="loader"></div> Analyse BANT...`;
+        setTimeout(() => {
+            let score = 20;
+            if(/budget.*?(10k|50k|100k|eur|euro|k€)/i.test(c)) score += 30;
+            if(/décideur|ceo|directeur|cto/i.test(c)) score += 20;
+            if(/urgent|immédiat|asap|demain/i.test(c)) score += 20;
+            score = Math.min(95, score);
+            document.getElementById('sales-content').innerHTML = `<div style="text-align: center; margin-bottom: 20px;"><div style="font-size: 36px; font-weight: 700; color: ${score > 60 ? 'var(--green)' : 'var(--red)'};">${score}%</div><div style="font-size: 12px; color: var(--text-gray);">PROBABILITY OF CLOSING</div></div><div class="task-item" style="border-left-color: var(--blue)"><strong>Recommandation:</strong> ${score > 60 ? 'Prospect chaud. Appeler immédiatement.' : 'Prospect froid. Nurturing requis.'}</div>`;
+        }, 1000);
+    }
+
+    // --- 7. COPYWRITER IA (Real Template Engine) ---
+    function runCopy() {
+        const p = document.getElementById('copy-product').value; const t = document.getElementById('copy-input').value; if(!p) return;
+        document.getElementById('copy-content').innerHTML = `<div class="loader"></div> Génération...`;
+        setTimeout(() => {
+            document.getElementById('copy-content').innerHTML = `
+                <div class="task-item" style="border-left-color: var(--yellow); color: var(--yellow);">🚀 Découvrez ${p} ! La solution ultime alliant ${t}. Obtenez le vôtre dès aujourd'hui.</div>
+                <div class="task-item" style="border-left-color: var(--blue); color: var(--blue);">LinkedIn: Vous cherchez ${p} ? Notre nouvelle solution alliant ${t} est enfin là. Cliquez pour découvrir les avantages.</div>
+                <div class="task-item" style="border-left-color: var(--green); color: var(--green);">SEO Title: ${p} : Guide, Prix et Avis. Meta: Tout savoir sur ${p} et ${t}.</div>`;
+        }, 1000);
+    }
+
+    // --- 8. SUPPLYCHAIN IA (Real Math) ---
+    function runSupply() {
+        const stock = parseFloat(document.getElementById('supply-stock').value);
+        const sales = parseFloat(document.getElementById('supply-sales').value);
+        const lead = parseFloat(document.getElementById('supply-lead').value);
+        if(isNaN(stock) || isNaN(sales) || isNaN(lead) || sales === 0) return showToast("Valeurs invalides", "error");
+        const daysLeft = stock / sales;
+        const reorderPoint = sales * lead;
+        document.getElementById('supply-content').innerHTML = `
+            <div class="task-item" style="border-left-color: var(--red)"><strong>📅 Rupture prévue dans:</strong> ${daysLeft.toFixed(1)} jours</div>
+            <div class="task-item" style="border-left-color: var(--yellow)"><strong>⚠️ Point de Réappro:</strong> Quand le stock atteint ${reorderPoint.toFixed(0)} unités</div>
+            <div class="task-item" style="border-left-color: var(--green)"><strong>✓ Recommandation:</strong> ${daysLeft < lead ? "Réapprovisionner URGENT" : "Stock sain pour le moment"}</div>`;
+    }
+
+    // --- VIEWS & UI ---
     function renderDynamicViews() {
         let html = `
         <div class="view" id="view-sav">
@@ -420,168 +466,53 @@
                 <div class="card" style="padding: 0; max-height: 750px; overflow-y: auto;">
                     <div style="padding: 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--surface-2);">
                         <div class="card-title" style="margin:0">Vraie Boîte Gmail (${state.user ? state.user.email.split('@')[0] : ''})</div>
-                        <button class="btn btn-blue" style="padding: 4px 8px; font-size: 11px;" onclick="syncGmail()">Sync 30 emails</button>
+                        <button class="btn btn-blue" style="padding: 4px 8px; font-size: 11px;" onclick="syncGmail()">Sync</button>
                     </div>
                     <div id="sav-email-list" style="color: var(--text-dark); font-size: 13px; text-align: center; padding: 40px 0;">Chargement des emails...</div>
                 </div>
                 <div class="card" style="min-height: 750px;">
-                    <div class="card-header"><div class="card-title">Analyse de l'Email par l'IA</div></div>
+                    <div class="card-header"><div class="card-title">Analyse & Actions</div></div>
                     <div id="sav-content" style="color: var(--text-dark); font-size: 13px; text-align: center; padding: 60px 0;">Sélectionnez un email...</div>
                 </div>
-            </div>
-            ` : `
-            <div class="card" style="text-align:center; padding: 60px 20px; margin-top: 20px;">
-                <h2 style="font-size: 22px; margin-bottom: 8px;">Connexion Gmail Requise</h2>
-                <p style="color: var(--text-gray); margin-bottom: 24px;">ZenDesk IA a besoin d'accéder à votre Gmail.</p>
-                <button class="btn btn-blue" onclick="switchView('integrations', document.querySelectorAll('.nav-item')[1])">Aller aux Connexions</button>
-            </div>
-            `}
+            </div>` : `<div class="card" style="text-align:center; padding: 60px 20px;"><h2>Gmail Requis</h2><button class="btn btn-blue" style="margin-top:16px" onclick="switchView('integrations', document.querySelectorAll('.nav-item')[1])">Aller aux Connexions</button></div>`}
         </div>`;
 
-        // COMPTA
         html += `<div class="view" id="view-compta">
-            <div class="card" style="text-align:center; padding: 60px 20px; margin-top: 20px;">
-                <h2 style="font-size: 22px; margin-bottom: 8px;">Dashboard Fiscal</h2>
-                <p style="color: var(--text-gray); margin-bottom: 24px;">TaxMaster IA est prêt à synchroniser vos flux Stripe et bancaires.</p>
-                <button class="btn btn-blue">⚡ Synchroniser les données financières</button>
+            <div class="grid-4" style="margin-bottom: 24px;">
+                <div class="card"><div class="stat-label">Revenus</div><div class="stat-value" style="color:var(--green)" id="kpi-rev">0€</div></div>
+                <div class="card"><div class="stat-label">Dépenses</div><div class="stat-value" style="color:var(--red)" id="kpi-exp">0€</div></div>
+                <div class="card"><div class="stat-label">TVA Net</div><div class="stat-value" id="kpi-tva">0€</div></div>
+                <div class="card"><div class="stat-label">Runway</div><div class="stat-value" id="kpi-runway">0x</div></div>
             </div>
+            <div class="card"><div class="card-header"><div class="card-title">Transactions Réelles (Relevé CSV)</div></div><div id="compta-table" style="text-align:center; color:var(--text-gray); padding:20px">Importez votre CSV dans l'onglet Connexions.</div></div>
         </div>`;
 
-        // RECRUTEUR
-        html += `<div class="view" id="view-recruteur">
-            <div class="grid-2">
-                <div class="card">
-                    <div class="card-header"><div class="card-title">Dépôt de Candidature</div></div>
-                    <textarea id="recruteur-input" style="min-height: 160px;" placeholder="Collez le texte du CV ici..."></textarea>
-                    <button class="btn btn-blue" style="margin-top: 12px; width: 100%;" onclick="runRecruteurManual()">Analyser le profil</button>
-                </div>
-                <div class="card">
-                    <div class="card-header"><div class="card-title">Dossier Candidat</div></div>
-                    <div id="recruteur-content" style="color: var(--text-dark); font-size: 13px; text-align: center; padding: 60px 0;">Le profil s'affichera ici...</div>
-                </div>
-            </div>
-        </div>`;
+        html += `<div class="view" id="view-recruteur"><div class="grid-2"><div class="card"><div class="card-header"><div class="card-title">Import Image CV</div></div><div class="file-drop" style="padding: 32px 16px;" onclick="document.getElementById('cv-img').click()"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2" style="margin: 0 auto 12px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg><p style="font-weight:600;">Importer une photo de CV</p><input type="file" id="cv-img" accept="image/*" style="display: none;" onchange="runRecruteurImage(event)"></div></div><div class="card"><div class="card-header"><div class="card-title">Analyse Réelle OCR</div></div><div id="recruteur-content" style="color: var(--text-dark); font-size: 13px; text-align: center; padding: 60px 0;">Importez l'image pour extraire le texte.</div></div></div></div>`;
 
-        // CODE REVIEWER
-        html += `<div class="view" id="view-dev">
-            <div class="grid-2">
-                <div class="card">
-                    <div class="card-header"><div class="card-title">Analyseur de Code</div></div>
-                    <textarea id="dev-input" style="min-height: 220px;" placeholder="Collez votre code JS/Python ici..."></textarea>
-                    <button class="btn btn-blue" style="margin-top: 12px; width: 100%;" onclick="runDev()">Lancer l'audit</button>
-                </div>
-                <div class="card">
-                    <div class="card-header"><div class="card-title">Rapport Tech Lead IA</div></div>
-                    <div id="dev-content" style="color: var(--text-dark); font-size: 13px; text-align: center; padding: 60px 0;">Les vulnérabilités s'afficheront ici...</div>
-                </div>
-            </div>
-        </div>`;
+        html += `<div class="view" id="view-dev"><div class="grid-2"><div class="card"><div class="card-header"><div class="card-title">Code à scanner</div></div><textarea id="dev-input" style="min-height: 220px;" placeholder="Collez votre code JS/Python..."></textarea><button class="btn btn-blue" style="margin-top: 12px; width: 100%;" onclick="runDev()">Lancer l'audit</button></div><div class="card"><div class="card-header"><div class="card-title">Rapport</div></div><div id="dev-content" style="text-align:center; padding:60px; color:var(--text-dark)">Résultat ici...</div></div></div></div>`;
 
-        // LEGAL EAGLE
-        html += `<div class="view" id="view-legal">
-            <div class="grid-2">
-                <div class="card">
-                    <div class="card-header"><div class="card-title">Analyseur de Contrat</div></div>
-                    <textarea id="legal-input" style="min-height: 220px;" placeholder="Collez le texte du contrat ou des CGV ici..."></textarea>
-                    <button class="btn btn-blue" style="margin-top: 12px; width: 100%;" onclick="runLegal()">Scanner les clauses</button>
-                </div>
-                <div class="card">
-                    <div class="card-header"><div class="card-title">Rapport Juridique IA</div></div>
-                    <div id="legal-content" style="color: var(--text-dark); font-size: 13px; text-align: center; padding: 60px 0;">Les risques légaux s'afficheront ici...</div>
-                </div>
-            </div>
-        </div>`;
+        html += `<div class="view" id="view-legal"><div class="grid-2"><div class="card"><div class="card-header"><div class="card-title">Contrat</div></div><textarea id="legal-input" style="min-height: 220px;" placeholder="Collez le contrat..."></textarea><button class="btn btn-blue" style="margin-top: 12px; width: 100%;" onclick="runLegal()">Scanner</button></div><div class="card"><div class="card-header"><div class="card-title">Rapport</div></div><div id="legal-content" style="text-align:center; padding:60px; color:var(--text-dark)">Résultat ici...</div></div></div></div>`;
 
-        // SALES PREDICT
-        html += `<div class="view" id="view-sales">
-            <div class="grid-2">
-                <div class="card">
-                    <div class="card-header"><div class="card-title">Description du Lead</div></div>
-                    <textarea id="sales-input" style="min-height: 220px;" placeholder="Décrivez le prospect, son budget, son besoin, son urgence..."></textarea>
-                    <button class="btn btn-blue" style="margin-top: 12px; width: 100%;" onclick="runSales()">Prédire le closing</button>
-                </div>
-                <div class="card">
-                    <div class="card-header"><div class="card-title">Probabilité de Vente</div></div>
-                    <div id="sales-content" style="color: var(--text-dark); font-size: 13px; text-align: center; padding: 60px 0;">L'analyse commerciale s'affichera ici...</div>
-                </div>
-            </div>
-        </div>`;
+        html += `<div class="view" id="view-sales"><div class="grid-2"><div class="card"><div class="card-header"><div class="card-title">Description Lead</div></div><textarea id="sales-input" style="min-height: 220px;" placeholder="Décrivez le prospect..."></textarea><button class="btn btn-blue" style="margin-top: 12px; width: 100%;" onclick="runSales()">Prédire</button></div><div class="card"><div class="card-header"><div class="card-title">Résultat</div></div><div id="sales-content" style="text-align:center; padding:60px; color:var(--text-dark)">Résultat ici...</div></div></div></div>`;
 
-        // COPYWRITER & SUPPLYCHAIN
-        html += `<div class="view" id="view-copy"><div class="grid-2"><div class="card"><div class="card-header"><div class="card-title">Briefing Marketing</div></div><input type="text" id="copy-product" placeholder="Nom du produit" style="margin-bottom: 12px;"><textarea id="copy-input" style="min-height: 180px;" placeholder="Caractéristiques clés"></textarea><button class="btn btn-blue" style="margin-top: 12px; width: 100%;" onclick="runCopy()">Générer Stratégie</button></div><div class="card"><div class="card-header"><div class="card-title">Campagnes & SEO</div></div><div id="copy-content" style="color: var(--text-dark); font-size: 13px; text-align: center; padding: 60px 0;">La copie générée s'affichera ici...</div></div></div></div>`;
-        html += `<div class="view" id="view-supply"><div class="card" style="text-align:center; padding: 60px 20px;"><h2 style="font-size: 22px; margin-bottom: 8px;">Optimisation Logistique</h2><p style="color: var(--text-gray); margin-bottom: 24px;">SupplyChain IA analyse vos bases de données d'inventaire pour prédire les ruptures de stock. (Connexion ERP requise)</p><button class="btn btn-blue">Connecter l'ERP</button></div></div>`;
+        html += `<div class="view" id="view-copy"><div class="grid-2"><div class="card"><div class="card-header"><div class="card-title">Briefing</div></div><input type="text" id="copy-product" placeholder="Nom produit" style="margin-bottom: 12px;"><textarea id="copy-input" style="min-height: 180px;" placeholder="Features"></textarea><button class="btn btn-blue" style="margin-top: 12px; width: 100%;" onclick="runCopy()">Générer</button></div><div class="card"><div class="card-header"><div class="card-title">Copies</div></div><div id="copy-content" style="text-align:center; padding:60px; color:var(--text-dark)">Résultat ici...</div></div></div></div>`;
+
+        html += `<div class="view" id="view-supply"><div class="grid-2"><div class="card"><div class="card-header"><div class="card-title">Données Inventaire</div></div><input type="number" id="supply-stock" placeholder="Stock actuel" style="margin-bottom: 12px;"><input type="number" id="supply-sales" placeholder="Ventes par jour" style="margin-bottom: 12px;"><input type="number" id="supply-lead" placeholder="Délai réappro (jours)"><button class="btn btn-blue" style="margin-top: 12px; width: 100%;" onclick="runSupply()">Calculer</button></div><div class="card"><div class="card-header"><div class="card-title">Prédiction Logistique</div></div><div id="supply-content" style="text-align:center; padding:60px; color:var(--text-dark)">Résultat ici...</div></div></div></div>`;
 
         document.getElementById('dynamic-views').innerHTML = html;
-        
         if(state.connections.gmail && document.getElementById('view-sav').classList.contains('active')) {
-            if(state.realEmails.length === 0) syncGmail();
-            else displayRealEmails();
+            if(state.realEmails.length === 0) syncGmail(); else displayRealEmails();
         }
     }
 
-    function runRecruteurManual() { const t = document.getElementById('recruteur-input').value; if(t) processCV(t); }
-    function processCV(t) {
-        document.getElementById('recruteur-content').innerHTML = `<div class="loader"></div> Analyse...`;
-        setTimeout(() => {
-            let e = t.match(/[\w.+-]+@[\w-]+\.[\w.-]+/); let ex = t.match(/(\d+)\s*an/);
-            let hS = ["React","Node","Python","SQL","Docker","Management"].filter(s => t.toLowerCase().includes(s.toLowerCase()));
-            let y = ex ? parseInt(ex[1]) : 0; let score = Math.min(100, (hS.length * 12) + (y * 6) + 20); let sal = (y * 5000) + (hS.length * 2000) + 30000;
-            document.getElementById('recruteur-content').innerHTML = `<div style="text-align: center; margin-bottom: 20px;"><div style="font-size: 36px; font-weight: 700; color: var(--green);">${score}%</div><div style="font-size: 12px; color: var(--text-gray);">MATCH SCORE</div></div><div class="task-item" style="border-left-color: var(--blue)"><strong>Est. Salaire:</strong> ${sal.toLocaleString('fr-FR')}€</div><div class="task-item" style="border-left-color: var(--purple)"><strong>Hard Skills:</strong> ${hS.join(', ') || 'Aucune détectée'}</div><div class="task-item" style="border-left-color: var(--yellow)"><strong>Exp. Détectée:</strong> ${y} ans</div>`;
-        }, 1000);
-    }
-    function runDev() {
-        const c = document.getElementById('dev-input').value; if(!c) return;
-        document.getElementById('dev-content').innerHTML = `<div class="loader"></div> Scan...`;
-        setTimeout(() => {
-            let iss = "";
-            if(c.includes("var ")) iss += `<div class="task-item" style="border-left-color: var(--yellow)"><strong style="color:var(--yellow)">⚠️ Warning:</strong> Utilisation de 'var'. Préférez 'let'.</div>`;
-            if(c.includes("eval(")) iss += `<div class="task-item" style="border-left-color: var(--red)"><strong style="color:var(--red)">🔴 Critical:</strong> 'eval()' détecté. Faille de sécurité.</div>`;
-            if(c.includes("innerHTML")) iss += `<div class="task-item" style="border-left-color: var(--red)"><strong style="color:var(--red)">🔴 XSS:</strong> 'innerHTML' sans sanitization.</div>`;
-            if(!iss) iss = `<div class="task-item" style="border-left-color: var(--green)"><strong style="color:var(--green)">✓ Parfait:</strong> Aucun bug détecté.</div>`;
-            document.getElementById('dev-content').innerHTML = iss;
-        }, 1000);
-    }
-    function runLegal() {
-        const c = document.getElementById('legal-input').value; if(!c) return;
-        document.getElementById('legal-content').innerHTML = `<div class="loader"></div> Scan juridique...`;
-        setTimeout(() => {
-            let iss = "";
-            if(/pénalité|sans préavis|irrévocable/i.test(c)) iss += `<div class="task-item" style="border-left-color: var(--red)"><strong style="color:var(--red)">🔴 Clause Abusive:</strong> Pénalité ou sans préavis détecté.</div>`;
-            if(/non-responsabilité|déclinons toute/i.test(c)) iss += `<div class="task-item" style="border-left-color: var(--yellow)"><strong style="color:var(--yellow)">⚠️ Risque:</strong> Clause d'exonération de responsabilité.</div>`;
-            if(!iss) iss = `<div class="task-item" style="border-left-color: var(--green)"><strong style="color:var(--green)">✓ Conforme:</strong> Aucun risque juridique majeur détecté.</div>`;
-            document.getElementById('legal-content').innerHTML = iss;
-        }, 1000);
-    }
-    function runSales() {
-        const c = document.getElementById('sales-input').value; if(!c) return;
-        document.getElementById('sales-content').innerHTML = `<div class="loader"></div> Prédiction...`;
-        setTimeout(() => {
-            let score = 20;
-            if(/budget.*?(10k|50k|100k|eur|euro)/i.test(c)) score += 30;
-            if(/décideur|ceo|directeur/i.test(c)) score += 20;
-            if(/urgent|immédiat|asap/i.test(c)) score += 20;
-            score = Math.min(95, score);
-            document.getElementById('sales-content').innerHTML = `<div style="text-align: center; margin-bottom: 20px;"><div style="font-size: 36px; font-weight: 700; color: ${score > 60 ? 'var(--green)' : 'var(--red)'};">${score}%</div><div style="font-size: 12px; color: var(--text-gray);">PROBABILITY OF CLOSING</div></div><div class="task-item" style="border-left-color: var(--blue)"><strong>Recommandation:</strong> ${score > 60 ? 'Prospect chaud. Appeler immédiatement.' : 'Prospect froid. Nurturing requis.'}</div>`;
-        }, 1000);
-    }
-    function runCopy() {
-        const p = document.getElementById('copy-product').value; const t = document.getElementById('copy-input').value; if(!p) return;
-        document.getElementById('copy-content').innerHTML = `<div class="loader"></div> Génération...`;
-        setTimeout(() => {
-            document.getElementById('copy-content').innerHTML = `<div class="task-item" style="border-left-color: var(--yellow); color: var(--yellow); min-height: 80px;">🚀 Découvrez ${p} ! La solution ultime alliant ${t}. Commandez aujourd'hui !</div>`;
-        }, 1000);
-    }
-
-    // --- UI & VIEWS ---
     function initStore() {
         document.getElementById('store-grid').innerHTML = agents.map(a => `
             <div class="app-card">
                 <div class="app-icon-large" style="background: rgba(255,255,255,0.05); border: 1px solid ${a.color}33;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${a.color}" stroke-width="2">${a.iconPath}</svg></div>
                 <h3>${a.name}</h3><p>${a.desc}</p>
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;"><span class="badge badge-blue">v10.0</span><span style="font-size:10px; color:var(--text-dark);">${Math.floor(Math.random() * 900 + 100)}k installs</span></div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;"><span class="badge badge-blue">v11.0</span></div>
                 ${state.installedAgents.includes(a.id) ? `<div class="installed-badge">✓ Installé</div>` : `<button class="install-btn" onclick="installAgent('${a.id}')">Installer</button>`}
-            </div>
-        `).join('');
+            </div>`).join('');
     }
 
     function initNavAgents() {
@@ -598,15 +529,7 @@
         if(el) el.classList.add('active');
         document.getElementById('page-title').innerText = viewId === 'store' ? 'App Store' : viewId === 'integrations' ? 'Connexions' : agents.find(a=>a.id===viewId).name;
         document.querySelector('.content').scrollTop = 0;
-        if(viewId === 'sav' && state.connections.gmail) {
-            if(state.realEmails.length === 0) syncGmail();
-            else displayRealEmails();
-        }
-    }
-
-    function installAgent(id) {
-        state.installedAgents.push(id); initStore(); initNavAgents(); renderDynamicViews();
-        showToast(`${agents.find(a=>a.id===id).name} déployé !`, 'success');
+        if(viewId === 'sav' && state.connections.gmail) { if(state.realEmails.length === 0) syncGmail(); else displayRealEmails(); }
     }
 
     let toastTimeout;
@@ -614,16 +537,6 @@
         const t = document.getElementById('toast'); document.getElementById('toast-text').innerText = msg;
         t.className = `toast show ${type}`; clearTimeout(toastTimeout);
         toastTimeout = setTimeout(() => t.classList.remove('show'), 3000);
-    }
-
-    function simulateConnection(service) {
-        state.connections[service] = true;
-        const statusEl = document.getElementById(service + '-status');
-        const btnEl = document.getElementById(service + '-btn');
-        if(statusEl) { statusEl.innerText = 'Connecté'; statusEl.style.color = 'var(--green)'; }
-        if(btnEl) { btnEl.innerText = 'Connecté ✓'; btnEl.style.borderColor = 'var(--green)'; btnEl.style.color = 'var(--green)'; btnEl.disabled = true; }
-        showToast(`${service} connecté`, 'success');
-        renderDynamicViews();
     }
 
     initStore(); initNavAgents(); renderDynamicViews();
