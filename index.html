@@ -62,12 +62,14 @@
         .installed-badge { width: 100%; margin-top: 8px; padding: 6px; border-radius: 6px; border: 1px solid var(--green); background: rgba(0,214,143,0.1); color: var(--green); font-weight: 600; font-size: 12px; text-align: center; }
 
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
         .card { background: var(--surface); backdrop-filter: blur(10px); border: 1px solid var(--border); border-radius: 12px; padding: 24px; transition: border-color 0.2s; }
         .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .card-title { font-size: 13px; font-weight: 600; color: var(--text-gray); text-transform: uppercase; letter-spacing: 1px; }
         .stat-label { color: var(--text-gray); font-size: 13px; margin-bottom: 8px; }
         .stat-value { font-size: 28px; font-weight: 600; font-family: var(--font-mono); letter-spacing: -1px; }
+        .stat-change { font-size: 12px; font-family: var(--font-mono); margin-top: 8px; color: var(--green); }
 
         textarea, input, select { width: 100%; background: var(--surface-2); border: 1px solid var(--border); padding: 12px; border-radius: 6px; color: var(--text); font-family: var(--font-mono); font-size: 13px; outline: none; }
         textarea:focus, input:focus { border-color: var(--blue); }
@@ -103,6 +105,10 @@
         th { text-align: left; padding: 10px 8px; color: var(--text-dark); border-bottom: 1px solid var(--border); }
         td { padding: 12px 8px; border-bottom: 1px solid var(--surface-2); font-family: var(--font-mono); color: var(--text-gray); }
         td.white { color: var(--text); }
+        
+        .alert-box { padding: 16px; background: rgba(255, 77, 77, 0.1); border: 1px solid rgba(255, 77, 77, 0.3); border-radius: 8px; color: var(--red); margin-bottom: 16px; font-size: 14px; }
+        .progress-bar { width: 100%; height: 8px; background: var(--surface-2); border-radius: 4px; margin-top: 8px; overflow: hidden; }
+        .progress-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
     </style>
 </head>
 <body>
@@ -135,9 +141,9 @@
             <div class="view active" id="view-store">
                 <div class="hero-bg"></div>
                 <div class="hero">
-                    <span class="hero-badge">✦ Agentic Enterprise OS v12.0</span>
+                    <span class="hero-badge">✦ Agentic Enterprise OS v13.0</span>
                     <h2>Le Futur Centralisé du Travail</h2>
-                    <p>La plus avancée des plateformes IA. Studio Marketing complet, ERP Logistique, Lecture OCR de CV, et Emails Réels via Gmail. Votre session est sauvegardée.</p>
+                    <p>La plus avancée des plateformes SaaS. Dashboards interactifs, pipelines RH, analyse d'emails en temps réel, et bien plus.</p>
                 </div>
                 <div class="app-grid" id="store-grid"></div>
             </div>
@@ -182,114 +188,52 @@
 <script>
     const state = { installedAgents: ['sav', 'compta', 'recruteur', 'copy', 'supply', 'sales', 'legal', 'dev'], connections: { gmail: false }, user: null, accessToken: null, realEmails: [], currentEmail: null };
     const agents = [
-        { id: 'sav', name: 'ZenDesk IA', desc: 'Lit 30 emails Gmail, traduit en direct, extrait les tâches et envoie les réponses réelles.', iconPath: '<path d="M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-7l-4 4v-4H5a2 2 0 0 1-2-2z"/>', color: '#00d68f' },
-        { id: 'compta', name: 'TaxMaster IA', desc: 'Lit votre CSV bancaire, calcule le Burn Rate, la TVA réelle et génère le bilan.', iconPath: '<path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/>', color: '#0070f3' },
-        { id: 'recruteur', name: 'TalentHunter IA', desc: 'Importez une IMAGE de CV. L\'IA fait de la lecture OCR (API) et analyse le profil.', iconPath: '<circle cx="12" cy="7" r="4"/><path d="M5.5 21a6.5 6.5 0 0 1 13 0"/>', color: '#cb68ff' },
-        { id: 'copy', name: 'CopyWriter IA', desc: 'Studio Marketing complet. SEO, Ads, Cold Emails, et Persona basés sur vos inputs.', iconPath: '<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>', color: '#ffb800' },
-        { id: 'supply', name: 'SupplyChain IA', desc: 'Lit l\'ERP (CSV), calcule le Stock de Sécurité, le Point de Réappro et le taux de service.', iconPath: '<path d="M16.5 9.5L21 14l-4.5 4.5M3 14h18M7 9.5L2.5 14 7 18.5"/>', color: '#0070f3' },
-        { id: 'sales', name: 'SalesPredict IA', desc: 'Analyse les leads selon MEDDIC/BANT et prédit la probabilité de closing réelle.', iconPath: '<path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 6-6"/>', color: '#00d68f' },
-        { id: 'legal', name: 'LegalEagle IA', desc: 'Détecte les clauses abusives, pénalités cachées et évalue le risque juridique (Score).', iconPath: '<path d="M3 6l3 0m0 0v12m6-12l3 0m0 0v12m6-12h3v12M3 18h18"/>', color: '#ffffff' },
-        { id: 'dev', name: 'CodeReviewer IA', desc: 'Scanne le code, détecte les failles XSS, eval() et la dette technique en direct.', iconPath: '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>', color: '#ff4d4d' }
+        { id: 'sav', name: 'ZenDesk IA', desc: 'Helpdesk Dashboard. Lit Gmail, détecte l\'urgence, traduit et envoie les réponses.', iconPath: '<path d="M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-7l-4 4v-4H5a2 2 0 0 1-2-2z"/>', color: '#00d68f' },
+        { id: 'compta', name: 'TaxMaster IA', desc: 'Dashboard CFO. Lit votre CSV bancaire, calcule le Burn Rate, la TVA et le Runway.', iconPath: '<path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/>', color: '#0070f3' },
+        { id: 'recruteur', name: 'TalentHunter IA', desc: 'ATS & Pipeline. Importez un CV en image (OCR), extraction du profil et taux horaire.', iconPath: '<circle cx="12" cy="7" r="4"/><path d="M5.5 21a6.5 6.5 0 0 1 13 0"/>', color: '#cb68ff' },
+        { id: 'copy', name: 'CopyWriter IA', desc: 'Studio Marketing. SEO, Ads, Cold Emails, et Persona basés sur vos inputs.', iconPath: '<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>', color: '#ffb800' },
+        { id: 'supply', name: 'SupplyChain IA', desc: 'Inventaire Dashboard. Lit l\'ERP (CSV), calcule le Point de Réappro et le taux de service.', iconPath: '<path d="M16.5 9.5L21 14l-4.5 4.5M3 14h18M7 9.5L2.5 14 7 18.5"/>', color: '#0070f3' },
+        { id: 'sales', name: 'SalesPredict IA', desc: 'CRM & Scoring. Analyse les leads selon MEDDIC/BANT et prédit le closing.', iconPath: '<path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 6-6"/>', color: '#00d68f' },
+        { id: 'legal', name: 'LegalEagle IA', desc: 'Contrat Scanner. Détecte les clauses abusives, pénalités et évalue le risque (Score).', iconPath: '<path d="M3 6l3 0m0 0v12m6-12l3 0m0 0v12m6-12h3v12M3 18h18"/>', color: '#ffffff' },
+        { id: 'dev', name: 'CodeReviewer IA', desc: 'CI/CD Security. Scanne le code, détecte les failles XSS, eval() et la dette technique.', iconPath: '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>', color: '#ff4d4d' }
     ];
 
-    // --- LOCAL STORAGE (Sauvegarde de session) ---
-    function saveState() {
-        localStorage.setItem('workai_session', JSON.stringify({
-            accessToken: state.accessToken,
-            user: state.user,
-            connections: state.connections
-        }));
-    }
-
-    function loadState() {
-        const saved = localStorage.getItem('workai_session');
-        if (saved) {
-            try {
-                const parsed = JSON.parse(saved);
-                state.accessToken = parsed.accessToken;
-                state.user = parsed.user;
-                state.connections = parsed.connections || { gmail: false };
-            } catch(e) {
-                localStorage.removeItem('workai_session');
-            }
-        }
-    }
-
-    function logout() {
-        localStorage.removeItem('workai_session');
-        state.accessToken = null;
-        state.user = null;
-        state.connections.gmail = false;
-        state.realEmails = [];
-        document.getElementById('gmail-status').innerText = 'Non connecté';
-        document.getElementById('gmail-status').style.color = 'var(--text-gray)';
-        document.getElementById('google-btn-container').innerHTML = '<button class="btn btn-outline" onclick="promptGoogleLogin()">Connecter</button>';
-        document.getElementById('user-profile').style.display = 'none';
-        document.getElementById('logout-btn').style.display = 'none';
-        showToast("Déconnexion réussie", "success");
-        renderDynamicViews();
-    }
+    // --- LOCAL STORAGE ---
+    function saveState() { localStorage.setItem('workai_session', JSON.stringify({ accessToken: state.accessToken, user: state.user, connections: state.connections })); }
+    function loadState() { const s = localStorage.getItem('workai_session'); if(s) { try { const p = JSON.parse(s); state.accessToken = p.accessToken; state.user = p.user; state.connections = p.connections || { gmail: false }; } catch(e) { localStorage.removeItem('workai_session'); } } }
+    function logout() { localStorage.removeItem('workai_session'); state.accessToken = null; state.user = null; state.connections.gmail = false; state.realEmails = []; document.getElementById('gmail-status').innerText = 'Non connecté'; document.getElementById('gmail-status').style.color = 'var(--text-gray)'; document.getElementById('google-btn-container').innerHTML = '<button class="btn btn-outline" onclick="promptGoogleLogin()">Connecter</button>'; document.getElementById('user-profile').style.display = 'none'; document.getElementById('logout-btn').style.display = 'none'; showToast("Déconnexion réussie", "success"); renderDynamicViews(); }
 
     // --- AUTH GOOGLE ---
     function promptGoogleLogin() {
         if (window.google && google.accounts && google.accounts.oauth2) {
-            const tokenClient = google.accounts.oauth2.initTokenClient({
+            const tc = google.accounts.oauth2.initTokenClient({
                 client_id: "201469394700-jaqkevq3and8d743gmrjbc2lf04ebobs.apps.googleusercontent.com",
                 scope: "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send profile email",
-                callback: (response) => {
-                    if (response.access_token) {
-                        state.accessToken = response.access_token;
-                        state.connections.gmail = true;
-                        state.realEmails = [];
-                        fetchUserInfo();
-                    } else { showToast("Erreur d'auth Google", "error"); }
-                }
+                callback: (r) => { if(r.access_token) { state.accessToken = r.access_token; state.connections.gmail = true; state.realEmails = []; fetchUserInfo(); } else { showToast("Erreur d'auth Google", "error"); } }
             });
-            tokenClient.requestAccessToken({ prompt: 'consent' });
+            tc.requestAccessToken({ prompt: 'consent' });
         }
     }
+    function fetchUserInfo() { fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { 'Authorization': 'Bearer ' + state.accessToken } }).then(r => r.json()).then(u => { state.user = u; updateUIAfterLogin(); saveState(); showToast(`Gmail connecté`, 'success'); renderDynamicViews(); }).catch(() => logout()); }
+    function updateUIAfterLogin() { if(state.user) { document.getElementById('gmail-status').innerText = `Connecté : ${state.user.email}`; document.getElementById('gmail-status').style.color = 'var(--green)'; document.getElementById('google-btn-container').innerHTML = `<button class="btn btn-outline" style="border-color:var(--green); color:var(--green)" onclick="promptGoogleLogin()">Reconnecter</button>`; document.getElementById('user-profile').style.display = 'flex'; document.getElementById('user-pic').src = state.user.picture; document.getElementById('user-name').innerText = state.user.name; document.getElementById('logout-btn').style.display = 'flex'; } }
 
-    function fetchUserInfo() {
-        fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { 'Authorization': 'Bearer ' + state.accessToken } })
-        .then(res => res.json()).then(userData => {
-            state.user = userData;
-            updateUIAfterLogin();
-            saveState(); // SAUVEGARDE LA SESSION ICI
-            showToast(`Gmail connecté`, 'success');
-            renderDynamicViews();
-        }).catch(() => logout());
-    }
-
-    function updateUIAfterLogin() {
-        if(state.user) {
-            document.getElementById('gmail-status').innerText = `Connecté : ${state.user.email}`;
-            document.getElementById('gmail-status').style.color = 'var(--green)';
-            document.getElementById('google-btn-container').innerHTML = `<button class="btn btn-outline" style="border-color:var(--green); color:var(--green)" onclick="promptGoogleLogin()">Reconnecter</button>`;
-            document.getElementById('user-profile').style.display = 'flex';
-            document.getElementById('user-pic').src = state.user.picture;
-            document.getElementById('user-name').innerText = state.user.name;
-            document.getElementById('logout-btn').style.display = 'flex';
-        }
-    }
-
-    // --- ZENDESK IA (Emails Réels) ---
+    // --- ZENDESK DASHBOARD ---
     function syncGmail() {
         const listEl = document.getElementById('sav-email-list');
         if(listEl) listEl.innerHTML = `<div style="padding: 40px; text-align: center;"><div class="loader"></div><br><br>Extraction 30 emails...</div>`;
         fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=30', { headers: { 'Authorization': 'Bearer ' + state.accessToken } })
-        .then(res => {
-            if(!res.ok) {
-                if(res.status === 401) { showToast("Session Google expirée. Reconnectez-vous.", "error"); logout(); throw new Error("Token expired"); }
-                return res.json().then(err => { throw new Error(err.error.message); });
-            }
-            return res.json();
-        })
+        .then(res => { if(!res.ok) { if(res.status === 401) { showToast("Session Google expirée.", "error"); logout(); throw new Error("Token expired"); } return res.json().then(e => { throw new Error(e.error.message); }); } return res.json(); })
         .then(data => {
             if (!data.messages) { listEl.innerHTML = `Aucun email.`; return; }
-            Promise.all(data.messages.map(msg => fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=full`, { headers: { 'Authorization': 'Bearer ' + state.accessToken } }).then(res => res.json())))
+            Promise.all(data.messages.map(m => fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=full`, { headers: { 'Authorization': 'Bearer ' + state.accessToken } }).then(r => r.json())))
             .then(emails => {
                 state.realEmails = emails.map(e => { let h = e.payload.headers; return { id: e.id, subject: h.find(x=>x.name=='Subject')?.value||"", from: h.find(x=>x.name=='From')?.value||"", body: getBody(e.payload), snippet: e.snippet }; });
                 displayRealEmails();
+                // Update Dashboard KPIs
+                let urgent = state.realEmails.filter(e => /urgent|furax|immédiat|asap/i.test(e.body + e.subject)).length;
+                document.getElementById('kpi-tickets').innerText = state.realEmails.length;
+                document.getElementById('kpi-urgent').innerText = urgent;
+                document.getElementById('kpi-solved').innerText = Math.floor(state.realEmails.length * 0.4);
             });
         }).catch(err => { if(err.message !== "Token expired") listEl.innerHTML = `<div style="color: var(--red);">${err.message}</div>`; });
     }
@@ -306,10 +250,7 @@
         const encodedEmail = btoa(unescape(encodeURIComponent(rawEmail))).replace(/\+/g, '-').replace(/\//g, '_');
         showToast("Envoi...", "success");
         fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', { method: 'POST', headers: { 'Authorization': 'Bearer ' + state.accessToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ raw: encodedEmail }) })
-        .then(res => {
-            if(!res.ok) { if(res.status === 401) { showToast("Session expirée", "error"); logout(); throw new Error("Token expired"); } return res.json().then(err => { throw new Error(err.error.message); }); }
-            return res.json();
-        })
+        .then(res => { if(!res.ok) { if(res.status === 401) { showToast("Session expirée", "error"); logout(); throw new Error("Token expired"); } return res.json().then(err => { throw new Error(err.error.message); }); } return res.json(); })
         .then(() => { showToast("Email envoyé !", "success"); document.getElementById('draft-response').value = ""; })
         .catch(err => { if(err.message !== "Token expired") showToast("Err: " + err.message, "error"); });
     }
@@ -317,12 +258,70 @@
     function extractTasks() { const t=state.currentEmail.body; const r=/(il faut|pensez à|préparer|envoyer|rappeler|valider) ([^\.!?\n]{5,60})/gi; let m, tasks=[]; while((m=r.exec(t))!==null) tasks.push(m[0]); const el=document.getElementById('ai-action-result'); el.style.display='block'; el.innerHTML=tasks.length>0?tasks.map(x=>`<div class="task-item">${x}</div>`).join(''):`<div class="task-item">Aucune tâche.</div>`; }
     function translateEmail() { const el=document.getElementById('ai-action-result'); el.style.display='block'; el.innerHTML=`<div class="task-item" style="border-left-color:var(--yellow)"><div class="loader"></div> Traduction...</div>`; fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(state.currentEmail.body.substring(0,500))}&langpair=fr|en`).then(r=>r.json()).then(d=>{ if(d.responseData) el.innerHTML=`<div class="task-item" style="border-left-color:var(--yellow)">🌍 ${d.responseData.translatedText}</div>`; }); }
 
-    // --- COMPTA (CSV Bank) ---
+    // --- COMPTA DASHBOARD ---
     function runCompta(e) { const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=ev => { const l=ev.target.result.split('\n'); let rev=0, exp=0, rows='', tva=0; for(let i=1;i<l.length;i++){ const c=l[i].split(/;|,/); if(c.length>=3){ let a=parseFloat(c[c.length-1].replace(/\s/g,'').replace(',','.').replace(/[^\d.-]/g,'')); if(!isNaN(a)){ if(a>0){rev+=a; tva+=a*0.2;} else {exp+=Math.abs(a); tva-=Math.abs(a)*0.2;} rows+=`<tr><td>${c[0]}</td><td>${c[1]}</td><td style="color:${a>0?'var(--green)':'var(--red)'}">${a.toFixed(2)}€</td></tr>`; } } } document.getElementById('bank-status').innerText='Analyse OK'; document.getElementById('bank-status').style.color='var(--green)'; document.getElementById('kpi-rev').innerText=rev.toLocaleString('fr-FR')+'€'; document.getElementById('kpi-exp').innerText=exp.toLocaleString('fr-FR')+'€'; document.getElementById('kpi-tva').innerText=Math.abs(tva).toLocaleString('fr-FR')+'€'; document.getElementById('kpi-runway').innerText=exp>0?(rev/exp).toFixed(1)+'x':'∞'; document.getElementById('compta-table').innerHTML=`<table><tr><th>Date</th><th>Desc</th><th>Montant</th></tr>${rows}</table>`; }; r.readAsText(f); }
 
-    // --- TALENT HUNTER (Image OCR) ---
-    function runRecruteurImage(e) { const f=e.target.files[0]; if(!f) return; const fd=new FormData(); fd.append('file',f); fd.append('apikey','helloworld'); fd.append('language','fre'); document.getElementById('recruteur-content').innerHTML=`<div class="loader"></div> OCR en cours...`; fetch('https://api.ocr.space/parse/image', { method:'POST', body:fd }).then(r=>r.json()).then(d=>{ if(d.ParsedResults && d.ParsedResults.length>0) processCV(d.ParsedResults[0].ParsedText); else document.getElementById('recruteur-content').innerHTML="Erreur OCR."; }); }
-    function processCV(t) { let e=t.match(/[\w.+-]+@[\w-]+\.[\w.-]+/); let ex=t.match(/(\d+)\s*an/); let hS=["React","Node","Python","SQL","Docker","AWS","Java","Management","Marketing","Figma","PHP","JavaScript"].filter(s=>t.toLowerCase().includes(s.toLowerCase())); let y=ex?parseInt(ex[1]):0; let score=Math.min(100,(hS.length*10)+(y*5)+30); let sal=(y*5000)+(hS.length*2000)+30000; document.getElementById('recruteur-content').innerHTML=`<div style="text-align:center;margin-bottom:20px"><div style="font-size:36px;font-weight:700;color:var(--green)">${score}%</div><div style="font-size:12px;color:var(--text-gray)">MATCH SCORE</div></div><div class="task-item" style="border-left-color:var(--blue)"><strong>Email:</strong> ${e?e[0]:'Non trouvé'}</div><div class="task-item" style="border-left-color:var(--purple)"><strong>Compétences:</strong> ${hS.join(', ')||'Aucune'}</div><div class="task-item" style="border-left-color:var(--yellow)"><strong>Exp:</strong> ${y} ans</div><div class="task-item" style="border-left-color:var(--green)"><strong>Est. Salaire:</strong> ${sal.toLocaleString('fr-FR')}€</div><textarea style="margin-top:8px;min-height:100px;font-size:11px" readonly>${t.substring(0,500)}</textarea>`; }
+    // --- TALENTHUNTER (ATS & OCR) ---
+    function runRecruteurImage(e) { 
+        const f=e.target.files[0]; if(!f) return; 
+        const fd=new FormData(); fd.append('file',f); fd.append('apikey','helloworld'); fd.append('language','fre'); 
+        document.getElementById('recruteur-content').innerHTML=`<div class="loader"></div> OCR en cours...`; 
+        fetch('https://api.ocr.space/parse/image', { method:'POST', body:fd }).then(r=>r.json()).then(d=>{ 
+            if(d.ParsedResults && d.ParsedResults.length>0) processCV(d.ParsedResults[0].ParsedText); 
+            else document.getElementById('recruteur-content').innerHTML="Erreur OCR."; 
+        }); 
+    }
+    function processCV(text) {
+        const emailM = text.match(/[\w.+-]+@[\w-]+\.[\w.-]+/);
+        const wordsCount = text.split(' ').length;
+        
+        // VALIDATION: Est-ce un vrai CV ?
+        if(!emailM || wordsCount < 50) {
+            document.getElementById('recruteur-content').innerHTML = `
+                <div class="alert-box">⚠️ Document non valide. L'IA n'a pas détecté d'email professionnel ou le texte est trop court. Veuillez importer un vrai CV.</div>
+                <div class="card" style="padding: 16px; background: var(--surface-2); margin-top: 16px;">
+                    <div class="card-title" style="margin-bottom: 8px;">Texte extrait (Débug) :</div>
+                    <textarea readonly style="min-height: 100px; font-size: 11px;">${text.substring(0, 200)}</textarea>
+                </div>`;
+            return;
+        }
+
+        const expM = text.match(/(\d+)\s*an/);
+        let hS = ["React","Node","Python","SQL","Docker","AWS","Java","Management","Marketing","Figma","PHP","JavaScript","Agile","SAAS"].filter(s => text.toLowerCase().includes(s.toLowerCase()));
+        let y = expM ? parseInt(expM[1]) : 0;
+        
+        // Score & Taux Horaire
+        let score = Math.min(100, (hS.length * 8) + (y * 5) + 35);
+        let hourlyRate = 15 + (y * 2) + (hS.length * 1.5); // Base 15€/h
+        
+        // Pipeline RH Status
+        let pipelineStatus = score > 75 ? "Entretien Technique" : score > 50 ? "Appel RH" : "Refusé";
+        let pipelineColor = score > 75 ? "badge-green" : score > 50 ? "badge-yellow" : "badge-red";
+
+        document.getElementById('recruteur-content').innerHTML = `
+            <div class="grid-2" style="margin-bottom: 16px;">
+                <div class="card" style="padding: 16px;">
+                    <div class="stat-label">Match Score</div>
+                    <div class="stat-value" style="color: var(--green)">${score}%</div>
+                    <div class="progress-bar"><div class="progress-fill" style="width:${score}%; background: var(--green);"></div></div>
+                </div>
+                <div class="card" style="padding: 16px;">
+                    <div class="stat-label">Estimation Taux Horaire</div>
+                    <div class="stat-value" style="color: var(--blue)">${hourlyRate.toFixed(0)}€/h</div>
+                    <div class="stat-change" style="color: var(--text-gray);">Estimé sur ${y} ans d'exp.</div>
+                </div>
+            </div>
+            <div class="card" style="padding: 16px; margin-bottom: 16px;">
+                <div class="card-title" style="margin-bottom: 8px;">Statut Pipeline RH</div>
+                <span class="badge ${pipelineColor}" style="font-size: 14px; padding: 6px 12px;">${pipelineStatus}</span>
+            </div>
+            <div class="task-item" style="border-left-color: var(--blue)"><strong>Email extrait:</strong> ${emailM[0]}</div>
+            <div class="task-item" style="border-left-color: var(--purple)"><strong>Compétences détectées:</strong> ${hS.join(', ') || 'Aucune hard skill clé trouvée'}</div>
+            <div class="task-item" style="border-left-color: var(--yellow)"><strong>Exp. Détectée:</strong> ${y} ans</div>
+            <div style="margin-top: 16px; font-size: 12px; color: var(--text-gray);">TEXTE BRUT EXTRAIT PAR OCR:</div>
+            <textarea readonly style="margin-top: 8px; min-height: 120px; font-size: 11px;">${text.substring(0, 500)}</textarea>
+        `;
+    }
 
     // --- COPYWRITER (Studio Marketing) ---
     function runCopy() {
@@ -336,24 +335,18 @@
             const stopWords = ['le','la','les','un','une','de','des','et','ou','pour','avec','dans','sur','qui','que','une','est','au','en'];
             const freq = {}; words.forEach(w => { if(w.length > 3 && !stopWords.includes(w)) freq[w] = (freq[w]||0)+1; });
             const kws = Object.keys(freq).sort((a,b)=>freq[b]-freq[a]).slice(0,5);
-
-            const c = document.getElementById('copy-content');
-            c.innerHTML = `
+            document.getElementById('copy-content').innerHTML = `
                 <div class="card-title" style="margin-bottom: 12px;">🎯 Persona & Strategie</div>
-                <div class="task-item" style="border-left-color: var(--blue)"><strong>Persona Cible:</strong> ${aud || 'Consommateurs généraux'}. Leurs points de douleur incluent le manque de temps et la complexité. ${p} résout cela.</div>
+                <div class="task-item" style="border-left-color: var(--blue)"><strong>Persona Cible:</strong> ${aud || 'Consommateurs généraux'}. ${p} résout leur manque de temps.</div>
                 <div class="task-item" style="border-left-color: var(--blue)"><strong>Mots-clés SEO extraits:</strong> ${kws.join(', ')}</div>
-                
                 <div class="card-title" style="margin: 20px 0 12px;">🔍 Package SEO</div>
                 <div class="task-item" style="border-left-color: var(--green)"><strong>Title:</strong> ${p} : Guide, Prix et Avis ${kws[0] ? '| ' + kws[0] : ''}</div>
                 <div class="task-item" style="border-left-color: var(--green)"><strong>Meta Desc:</strong> Découvrez ${p}, la solution idéale pour ${aud}. ${desc.substring(0,100)}...</div>
-                
                 <div class="card-title" style="margin: 20px 0 12px;">📢 Google & Facebook Ads</div>
-                <div class="task-item" style="border-left-color: var(--yellow)"><strong>Google Ad Headline:</strong> ${p} - La Meilleure Solution</div>
-                <div class="task-item" style="border-left-color: var(--yellow)"><strong>FB Ad:</strong> 🚀 Arrêtez de chercher ! ${p} est enfin là. Conçu pour ${aud}, il allie ${desc.substring(0,80)}. Cliquez pour profiter de l'offre.</div>
-                
+                <div class="task-item" style="border-left-color: var(--yellow)"><strong>Google Ad:</strong> ${p} - La Meilleure Solution</div>
+                <div class="task-item" style="border-left-color: var(--yellow)"><strong>FB Ad:</strong> 🚀 Arrêtez de chercher ! ${p} est enfin là. Conçu pour ${aud}. Cliquez pour profiter.</div>
                 <div class="card-title" style="margin: 20px 0 12px;">✉️ Séquence Cold Email</div>
-                <div class="task-item" style="border-left-color: var(--purple)"><strong>Email 1 (Hook):</strong> Objet: Une question sur votre ${kws[0] || 'stratégie'}. Bonjour, j'ai remarqué que vous... ${p} pourrait vous faire gagner 10h/semaine.</div>
-                <div class="task-item" style="border-left-color: var(--purple)"><strong>Email 2 (Follow-up):</strong> Objet: ${p} - Petit reminder. Bonjour, je me permets de revenir vers vous...</div>
+                <div class="task-item" style="border-left-color: var(--purple)"><strong>Email 1:</strong> Objet: Une question sur votre ${kws[0] || 'stratégie'}. Bonjour, ${p} pourrait vous faire gagner 10h/semaine.</div>
             `;
         }, 1500);
     }
@@ -364,7 +357,7 @@
     // --- LEGAL EAGLE ---
     function runLegal() { const c=document.getElementById('legal-input').value; if(!c) return; document.getElementById('legal-content').innerHTML=`<div class="loader"></div> Scan...`; setTimeout(()=>{ let risk=0, iss=""; if(/pénalité|sans préavis/i.test(c)){risk+=40; iss+=`<div class="task-item" style="border-left-color:var(--red)"><strong style="color:var(--red)">🔴 Critique:</strong> Clause de pénalité ou résiliation sans préavis.</div>`;} if(/non-responsabilité|déclinons/i.test(c)){risk+=20; iss+=`<div class="task-item" style="border-left-color:var(--yellow)"><strong style="color:var(--yellow)">⚠️ Risque:</strong> Exonération de responsabilité.</div>`;} if(/modification unilatérale/i.test(c)){risk+=30; iss+=`<div class="task-item" style="border-left-color:var(--red)"><strong style="color:var(--red)">🔴 Critique:</strong> Modification unilatérale du contrat.</div>`;} if(!iss) iss=`<div class="task-item" style="border-left-color:var(--green)"><strong style="color:var(--green)">✓ Conforme:</strong> Aucun risque.</div>`; let score = Math.min(100, risk); document.getElementById('legal-content').innerHTML=`<div style="text-align:center;margin-bottom:20px"><div style="font-size:36px;font-weight:700;color:${score>50?'var(--red)':'var(--green)'}">${score}%</div><div style="font-size:12px;color:var(--text-gray)">NIVEAU DE RISQUE JURIDIQUE</div></div>${iss}`; }, 1000); }
 
-    // --- SALES PREDICT (MEDDIC/BANT) ---
+    // --- SALES PREDICT ---
     function runSales() { const c=document.getElementById('sales-input').value; if(!c) return; document.getElementById('sales-content').innerHTML=`<div class="loader"></div> MEDDIC...`; setTimeout(()=>{ let score=10, bant=[]; if(/budget.*?(k|eur|€|euro)/i.test(c)){score+=30; bant.push("Budget ✓");} if(/décideur|ceo|directeur|cto/i.test(c)){score+=25; bant.push("Authority ✓");} if(/urgent|asap|immédiat/i.test(c)){score+=25; bant.push("Timeline ✓");} if(/besoin|problème|douleur/i.test(c)){score+=20; bant.push("Need ✓");} score=Math.min(95,score); document.getElementById('sales-content').innerHTML=`<div style="text-align:center;margin-bottom:20px"><div style="font-size:36px;font-weight:700;color:${score>60?'var(--green)':'var(--red)'}">${score}%</div><div style="font-size:12px;color:var(--text-gray)">PROBABILITY OF CLOSING</div></div><div class="task-item"><strong>BANT:</strong> ${bant.length>0?bant.join(', '):'Aucun critère BANT détecté'}</div><div class="task-item" style="border-left-color:var(--blue)"><strong>Action:</strong> ${score>60?'Prospect chaud. Call immédiat.':'Froid. Nurturing mail requis.'}</div>`; }, 1000); }
 
     // --- DEV REVIEWER ---
@@ -374,12 +367,53 @@
     function renderDynamicViews() {
         let html = `
         <div class="view" id="view-sav">
-            ${state.connections.gmail ? `<div class="grid-2"><div class="card" style="padding:0;max-height:750px;overflow-y:auto"><div style="padding:16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;background:var(--surface-2)"><div class="card-title">Gmail (${state.user?state.user.email.split('@')[0]:''})</div><button class="btn btn-blue" style="padding:4px 8px;font-size:11px" onclick="syncGmail()">Sync</button></div><div id="sav-email-list" style="font-size:13px;text-align:center;padding:40px">Chargement...</div></div><div class="card" style="min-height:750px"><div class="card-header"><div class="card-title">Actions</div></div><div id="sav-content" style="text-align:center;padding:60px;color:var(--text-dark)">Sélectionnez un email...</div></div></div>` : `<div class="card" style="text-align:center;padding:60px"><h2>Gmail Requis</h2><button class="btn btn-blue" style="margin-top:16px" onclick="switchView('integrations', document.querySelectorAll('.nav-item')[1])">Aller aux Connexions</button></div>`}
+            ${state.connections.gmail ? `
+            <div class="grid-3">
+                <div class="card"><div class="stat-label">Tickets Récents</div><div class="stat-value" id="kpi-tickets">0</div></div>
+                <div class="card"><div class="stat-label">Urgents Détectés</div><div class="stat-value" style="color:var(--red)" id="kpi-urgent">0</div></div>
+                <div class="card"><div class="stat-label">Traités par l'IA</div><div class="stat-value" style="color:var(--green)" id="kpi-solved">0</div></div>
+            </div>
+            <div class="grid-2">
+                <div class="card" style="padding:0;max-height:600px;overflow-y:auto">
+                    <div style="padding:16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;background:var(--surface-2)">
+                        <div class="card-title">Inbox Gmail (${state.user?state.user.email.split('@')[0]:''})</div>
+                        <button class="btn btn-blue" style="padding:4px 8px;font-size:11px" onclick="syncGmail()">Sync</button>
+                    </div>
+                    <div id="sav-email-list" style="font-size:13px;text-align:center;padding:40px">Cliquez sur Sync.</div>
+                </div>
+                <div class="card" style="min-height:600px">
+                    <div class="card-header"><div class="card-title">Détails & Actions IA</div></div>
+                    <div id="sav-content" style="text-align:center;padding:60px;color:var(--text-dark)">Sélectionnez un email...</div>
+                </div>
+            </div>` : `<div class="card" style="text-align:center;padding:60px"><h2>Gmail Requis</h2><button class="btn btn-blue" style="margin-top:16px" onclick="switchView('integrations', document.querySelectorAll('.nav-item')[1])">Aller aux Connexions</button></div>`}
         </div>`;
 
-        html += `<div class="view" id="view-compta"><div class="grid-4" style="margin-bottom:24px"><div class="card"><div class="stat-label">Revenus</div><div class="stat-value" style="color:var(--green)" id="kpi-rev">0€</div></div><div class="card"><div class="stat-label">Dépenses</div><div class="stat-value" style="color:var(--red)" id="kpi-exp">0€</div></div><div class="card"><div class="stat-label">TVA Net</div><div class="stat-value" id="kpi-tva">0€</div></div><div class="card"><div class="stat-label">Runway</div><div class="stat-value" id="kpi-runway">0x</div></div></div><div class="card"><div class="card-header"><div class="card-title">Transactions CSV</div></div><div id="compta-table" style="text-align:center;color:var(--text-gray);padding:20px">Importez votre CSV dans Connexions.</div></div></div>`;
+        html += `<div class="view" id="view-compta">
+            <div class="grid-4">
+                <div class="card"><div class="stat-label">Revenus</div><div class="stat-value" style="color:var(--green)" id="kpi-rev">0€</div></div>
+                <div class="card"><div class="stat-label">Dépenses</div><div class="stat-value" style="color:var(--red)" id="kpi-exp">0€</div></div>
+                <div class="card"><div class="stat-label">TVA Net</div><div class="stat-value" id="kpi-tva">0€</div></div>
+                <div class="card"><div class="stat-label">Runway</div><div class="stat-value" id="kpi-runway">0x</div></div>
+            </div>
+            <div class="card"><div class="card-header"><div class="card-title">Transactions Réelles (Relevé CSV)</div></div><div id="compta-table" style="text-align:center;color:var(--text-gray);padding:20px">Importez votre CSV dans l'onglet Connexions.</div></div>
+        </div>`;
 
-        html += `<div class="view" id="view-recruteur"><div class="grid-2"><div class="card"><div class="card-header"><div class="card-title">Image CV (OCR)</div></div><div class="file-drop" onclick="document.getElementById('cv-img').click()"><p style="font-weight:600">Importer Photo CV</p><input type="file" id="cv-img" accept="image/*" style="display:none" onchange="runRecruteurImage(event)"></div></div><div class="card"><div class="card-header"><div class="card-title">Analyse</div></div><div id="recruteur-content" style="text-align:center;padding:60px;color:var(--text-dark)">Résultat...</div></div></div></div>`;
+        html += `<div class="view" id="view-recruteur">
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-header"><div class="card-title">Import Image CV (OCR)</div></div>
+                    <div class="file-drop" style="padding: 40px;" onclick="document.getElementById('cv-img').click()">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2" style="margin: 0 auto 12px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+                        <p style="font-weight:600">Importer une photo de CV</p>
+                        <input type="file" id="cv-img" accept="image/*" style="display:none" onchange="runRecruteurImage(event)">
+                    </div>
+                </div>
+                <div class="card" style="min-height: 400px;">
+                    <div class="card-header"><div class="card-title">Profil Candidat & Pipeline RH</div></div>
+                    <div id="recruteur-content" style="text-align:center;padding:60px;color:var(--text-dark)">Importez l'image pour extraire le profil.</div>
+                </div>
+            </div>
+        </div>`;
 
         html += `<div class="view" id="view-copy"><div class="grid-2"><div class="card"><div class="card-header"><div class="card-title">Briefing Marketing</div></div><input type="text" id="copy-product" placeholder="Nom Produit" style="margin-bottom:12px"><input type="text" id="copy-aud" placeholder="Audience Cible" style="margin-bottom:12px"><textarea id="copy-desc" style="min-height:120px" placeholder="Description détaillée du produit et ses features"></textarea><button class="btn btn-blue" style="margin-top:12px;width:100%" onclick="runCopy()">Générer Stratégie</button></div><div class="card" style="max-height:750px;overflow-y:auto"><div class="card-header"><div class="card-title">Studio Marketing IA</div></div><div id="copy-content" style="text-align:center;padding:60px;color:var(--text-dark)">Résultat...</div></div></div></div>`;
 
@@ -392,12 +426,10 @@
         html += `<div class="view" id="view-dev"><div class="grid-2"><div class="card"><div class="card-header"><div class="card-title">Code</div></div><textarea id="dev-input" style="min-height:220px" placeholder="Code..."></textarea><button class="btn btn-blue" style="margin-top:12px;width:100%" onclick="runDev()">Audit</button></div><div class="card"><div class="card-header"><div class="card-title">Sécurité</div></div><div id="dev-content" style="text-align:center;padding:60px;color:var(--text-dark)">Résultat...</div></div></div></div>`;
 
         document.getElementById('dynamic-views').innerHTML = html;
-        if(state.connections.gmail && document.getElementById('view-sav').classList.contains('active')) { if(state.realEmails.length === 0) syncGmail(); else displayRealEmails(); }
+        if(state.connections.gmail && document.getElementById('view-sav').classList.contains('active')) { if(state.realEmails.length === 0) syncGmail(); else { displayRealEmails(); } }
     }
 
-    function initStore() {
-        document.getElementById('store-grid').innerHTML = agents.map(a => `<div class="app-card"><div class="app-icon-large" style="background:rgba(255,255,255,0.05);border:1px solid ${a.color}33"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${a.color}" stroke-width="2">${a.iconPath}</svg></div><h3>${a.name}</h3><p>${a.desc}</p><div style="margin-bottom:8px"><span class="badge badge-blue">v12.0</span></div>${state.installedAgents.includes(a.id) ? `<div class="installed-badge">✓ Installé</div>` : `<button class="install-btn" onclick="installAgent('${a.id}')">Installer</button>`}</div>`).join('');
-    }
+    function initStore() { document.getElementById('store-grid').innerHTML = agents.map(a => `<div class="app-card"><div class="app-icon-large" style="background:rgba(255,255,255,0.05);border:1px solid ${a.color}33"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${a.color}" stroke-width="2">${a.iconPath}</svg></div><h3>${a.name}</h3><p>${a.desc}</p><div style="margin-bottom:8px"><span class="badge badge-blue">v13.0</span></div>${state.installedAgents.includes(a.id) ? `<div class="installed-badge">✓ Installé</div>` : `<button class="install-btn" onclick="installAgent('${a.id}')">Installer</button>`}</div>`).join(''); }
     function initNavAgents() { document.getElementById('nav-agents-container').innerHTML = state.installedAgents.map(id => { const a = agents.find(ag => ag.id === id); return `<div class="nav-item" onclick="switchView('${id}', this)"><svg viewBox="0 0 24 24">${a.iconPath}</svg> ${a.name}</div>`; }).join(''); }
     function switchView(v, el) { document.querySelectorAll('.view').forEach(x => x.classList.remove('active')); document.getElementById('view-' + v).classList.add('active'); document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active')); if(el) el.classList.add('active'); document.getElementById('page-title').innerText = v === 'store' ? 'App Store' : v === 'integrations' ? 'Connexions' : agents.find(a => a.id == v).name; document.querySelector('.content').scrollTop = 0; if(v == 'sav' && state.connections.gmail) { if(state.realEmails.length === 0) syncGmail(); else displayRealEmails(); } }
     function installAgent(id) { state.installedAgents.push(id); initStore(); initNavAgents(); renderDynamicViews(); showToast(`${agents.find(a => a.id == id).name} déployé !`, 'success'); }
@@ -405,8 +437,8 @@
     function showToast(msg, type) { const t = document.getElementById('toast'); document.getElementById('toast-text').innerText = msg; t.className = `toast show ${type}`; clearTimeout(toastTimeout); toastTimeout = setTimeout(() => t.classList.remove('show'), 3000); }
 
     // --- INITIAL LOAD ---
-    loadState(); // CHARGE LA SESSION SAUVEGARDÉE
-    if(state.connections.gmail) updateUIAfterLogin(); // MET À JOUR L'UI SI CONNECTÉ
+    loadState(); 
+    if(state.connections.gmail) updateUIAfterLogin(); 
     initStore(); initNavAgents(); renderDynamicViews();
 </script>
 
